@@ -7,14 +7,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ShoppingCart, LogOut, Package } from "lucide-react";
+import { Search, ShoppingCart, LogOut, Package, Activity, DollarSign, ArrowLeftRight } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { HealthReportDialog } from "@/components/health-report-dialog";
+import { AppraisalDialog } from "@/components/appraisal-dialog";
+import { MachinePartsViewer } from "@/components/machine-parts-viewer";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const { user, logout: authLogout } = useAuth();
+  const [healthReportOpen, setHealthReportOpen] = useState(false);
+  const [appraisalOpen, setAppraisalOpen] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string>("");
 
   const { data: items, isLoading } = useQuery<ItemWithIndustry[]>({
     queryKey: ['/api/items'],
@@ -63,14 +69,16 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              <ThemeToggle />
+              <MachinePartsViewer />
               <Button 
-                variant="ghost" 
-                size="icon"
-                data-testid="button-cart"
+                variant="outline"
+                onClick={() => setLocation("/exchanges")}
+                className="gap-2"
               >
-                <ShoppingCart className="h-5 w-5" />
+                <ArrowLeftRight className="h-4 w-4" />
+                Exchanges
               </Button>
+              <ThemeToggle />
               <Button
                 variant="ghost"
                 onClick={handleLogout}
@@ -195,6 +203,33 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="flex-1 text-xs gap-1"
+                      onClick={() => {
+                        setSelectedItemId(item.id);
+                        setHealthReportOpen(true);
+                      }}
+                    >
+                      <Activity className="h-3 w-3" />
+                      Health
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="flex-1 text-xs gap-1"
+                      onClick={() => {
+                        setSelectedItemId(item.id);
+                        setAppraisalOpen(true);
+                      }}
+                    >
+                      <DollarSign className="h-3 w-3" />
+                      Value
+                    </Button>
+                  </div>
                 </CardContent>
 
                 <CardFooter>
@@ -211,6 +246,22 @@ export default function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Dialogs */}
+      {selectedItemId && (
+        <>
+          <HealthReportDialog 
+            itemId={selectedItemId}
+            open={healthReportOpen}
+            onOpenChange={setHealthReportOpen}
+          />
+          <AppraisalDialog 
+            itemId={selectedItemId}
+            open={appraisalOpen}
+            onOpenChange={setAppraisalOpen}
+          />
+        </>
+      )}
     </div>
   );
 }

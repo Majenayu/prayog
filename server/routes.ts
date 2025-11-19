@@ -7,7 +7,7 @@ import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { Readable } from "stream";
 import { storage } from "./storage";
-import { insertUserSchema, insertItemSchema } from "@shared/schema";
+import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema } from "@shared/schema";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -313,6 +313,167 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(rental);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to create rental" });
+    }
+  });
+
+  // Machine Parts Routes
+  app.get("/api/machine-parts/types", async (req, res) => {
+    try {
+      const types = await storage.getAllMachineTypes();
+      res.json(types);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch machine types" });
+    }
+  });
+
+  app.get("/api/machine-parts/:machineType", async (req, res) => {
+    try {
+      const parts = await storage.getMachinePartsByType(req.params.machineType);
+      res.json(parts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch machine parts" });
+    }
+  });
+
+  app.post("/api/machine-parts", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validatedData = insertMachinePartSchema.parse(req.body);
+      const part = await storage.createMachinePart(validatedData);
+      res.json(part);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to create machine part" });
+    }
+  });
+
+  // Health Reports Routes
+  app.get("/api/health-reports/item/:itemId", async (req, res) => {
+    try {
+      const report = await storage.getHealthReportByItemId(req.params.itemId);
+      if (!report) {
+        return res.status(404).json({ message: "Health report not found" });
+      }
+      res.json(report);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch health report" });
+    }
+  });
+
+  app.post("/api/health-reports", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validatedData = insertHealthReportSchema.parse(req.body);
+      const report = await storage.createHealthReport(validatedData);
+      res.json(report);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to create health report" });
+    }
+  });
+
+  // Appraisals Routes
+  app.get("/api/appraisals/item/:itemId", async (req, res) => {
+    try {
+      const appraisal = await storage.getAppraisalByItemId(req.params.itemId);
+      if (!appraisal) {
+        return res.status(404).json({ message: "Appraisal not found" });
+      }
+      res.json(appraisal);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch appraisal" });
+    }
+  });
+
+  app.post("/api/appraisals", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validatedData = insertAppraisalSchema.parse(req.body);
+      const appraisal = await storage.createAppraisal(validatedData);
+      res.json(appraisal);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to create appraisal" });
+    }
+  });
+
+  // Exchanges Routes
+  app.get("/api/exchanges/my-exchanges", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const offeredExchanges = await storage.getExchangesByOfferer(req.session.userId);
+      const receivedExchanges = await storage.getExchangesByReceiver(req.session.userId);
+
+      const allExchanges = [...offeredExchanges, ...receivedExchanges];
+
+      const exchangesWithDetails = (await Promise.all(
+        allExchanges.map(async (exchange) => {
+          const offeredItem = await storage.getItemById(exchange.offeredItemId);
+          const requestedItem = exchange.requestedItemId ? await storage.getItemById(exchange.requestedItemId) : null;
+          const offerer = await storage.getUserById(exchange.offererId);
+          const receiver = exchange.receiverId ? await storage.getUserById(exchange.receiverId) : null;
+
+          if (!offeredItem || !offerer) {
+            return null;
+          }
+
+          return {
+            ...exchange,
+            offeredItem,
+            requestedItem,
+            offererName: offerer.username,
+            receiverName: receiver?.username,
+          };
+        })
+      )).filter(exchange => exchange !== null);
+
+      res.json(exchangesWithDetails);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch exchanges" });
+    }
+  });
+
+  app.post("/api/exchanges", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const validatedData = insertExchangeSchema.omit({ offererId: true }).parse(req.body);
+      const exchange = await storage.createExchange({
+        ...validatedData,
+        offererId: req.session.userId,
+      });
+
+      res.json(exchange);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to create exchange" });
+    }
+  });
+
+  app.patch("/api/exchanges/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const exchange = await storage.updateExchange(req.params.id, req.body);
+      if (!exchange) {
+        return res.status(404).json({ message: "Exchange not found" });
+      }
+
+      res.json(exchange);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update exchange" });
     }
   });
 

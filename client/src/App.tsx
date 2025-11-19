@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
 import IndustryDashboard from "@/pages/industry-dashboard";
+import ExchangesPage from "@/pages/exchanges";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: string }) {
@@ -58,6 +59,10 @@ function Router() {
       
       <Route path="/dashboard">
         <ProtectedRoute component={Dashboard} allowedRole="user" />
+      </Route>
+      
+      <Route path="/exchanges">
+        <ProtectedRoute component={ExchangesPage} />
       </Route>
       
       <Route path="/industry">

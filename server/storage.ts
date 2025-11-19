@@ -2,7 +2,16 @@ import { drizzle } from "drizzle-orm/neon-serverless";
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc } from "drizzle-orm";
-import { users, items, rentals, type User, type InsertUser, type Item, type InsertItem, type Rental, type InsertRental } from "@shared/schema";
+import { 
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges,
+  type User, type InsertUser, 
+  type Item, type InsertItem, 
+  type Rental, type InsertRental,
+  type MachinePart, type InsertMachinePart,
+  type HealthReport, type InsertHealthReport,
+  type Appraisal, type InsertAppraisal,
+  type Exchange, type InsertExchange
+} from "@shared/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL || "";
 
@@ -22,7 +31,7 @@ export interface IStorage {
   getUserById(id: string): Promise<User | null>;
 
   // Items
-  createItem(item: Omit<InsertItem, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; industryId: string }): Promise<Item>;
+  createItem(item: Omit<InsertItem, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; industryId: string; machineType?: string; purchaseDate?: Date; warrantyExpiry?: Date }): Promise<Item>;
   getItems(): Promise<Item[]>;
   getItemById(id: string): Promise<Item | null>;
   getItemsByIndustry(industryId: string): Promise<Item[]>;
@@ -34,6 +43,29 @@ export interface IStorage {
   getRentalsByIndustry(industryId: string): Promise<Rental[]>;
   getRentalsByUser(userId: string): Promise<Rental[]>;
   updateRental(id: string, updates: Partial<Rental>): Promise<Rental | null>;
+
+  // Machine Parts
+  createMachinePart(part: InsertMachinePart): Promise<MachinePart>;
+  getMachinePartsByType(machineType: string): Promise<MachinePart[]>;
+  getMachinePartById(id: string): Promise<MachinePart | null>;
+  getAllMachineTypes(): Promise<string[]>;
+
+  // Health Reports
+  createHealthReport(report: InsertHealthReport): Promise<HealthReport>;
+  getHealthReportByItemId(itemId: string): Promise<HealthReport | null>;
+  getHealthReportsByIndustry(industryId: string): Promise<HealthReport[]>;
+
+  // Appraisals
+  createAppraisal(appraisal: InsertAppraisal): Promise<Appraisal>;
+  getAppraisalByItemId(itemId: string): Promise<Appraisal | null>;
+  getAppraisalsByIndustry(industryId: string): Promise<Appraisal[]>;
+
+  // Exchanges
+  createExchange(exchange: InsertExchange): Promise<Exchange>;
+  getExchangeById(id: string): Promise<Exchange | null>;
+  getExchangesByOfferer(offererId: string): Promise<Exchange[]>;
+  getExchangesByReceiver(receiverId: string): Promise<Exchange[]>;
+  updateExchange(id: string, updates: Partial<Exchange>): Promise<Exchange | null>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -59,7 +91,7 @@ export class PostgresStorage implements IStorage {
   }
 
   // Items
-  async createItem(item: Omit<InsertItem, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; industryId: string }): Promise<Item> {
+  async createItem(item: Omit<InsertItem, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; industryId: string; machineType?: string; purchaseDate?: Date; warrantyExpiry?: Date }): Promise<Item> {
     const [newItem] = await db.insert(items).values({
       ...item,
       availableQuantity: item.quantity,
@@ -107,6 +139,90 @@ export class PostgresStorage implements IStorage {
   async updateRental(id: string, updates: Partial<Rental>): Promise<Rental | null> {
     const [updatedRental] = await db.update(rentals).set(updates).where(eq(rentals.id, id)).returning();
     return updatedRental || null;
+  }
+
+  // Machine Parts
+  async createMachinePart(part: InsertMachinePart): Promise<MachinePart> {
+    const [newPart] = await db.insert(machineParts).values(part).returning();
+    return newPart;
+  }
+
+  async getMachinePartsByType(machineType: string): Promise<MachinePart[]> {
+    return await db.select().from(machineParts).where(eq(machineParts.machineType, machineType)).orderBy(desc(machineParts.createdAt));
+  }
+
+  async getMachinePartById(id: string): Promise<MachinePart | null> {
+    const [part] = await db.select().from(machineParts).where(eq(machineParts.id, id)).limit(1);
+    return part || null;
+  }
+
+  async getAllMachineTypes(): Promise<string[]> {
+    const results = await db.selectDistinct({ machineType: machineParts.machineType }).from(machineParts);
+    return results.map(r => r.machineType).filter(Boolean);
+  }
+
+  // Health Reports
+  async createHealthReport(report: InsertHealthReport): Promise<HealthReport> {
+    const [newReport] = await db.insert(healthReports).values(report).returning();
+    return newReport;
+  }
+
+  async getHealthReportByItemId(itemId: string): Promise<HealthReport | null> {
+    const [report] = await db.select().from(healthReports).where(eq(healthReports.itemId, itemId)).orderBy(desc(healthReports.createdAt)).limit(1);
+    return report || null;
+  }
+
+  async getHealthReportsByIndustry(industryId: string): Promise<HealthReport[]> {
+    const itemsInIndustry = await this.getItemsByIndustry(industryId);
+    const itemIds = itemsInIndustry.map(item => item.id);
+    if (itemIds.length === 0) return [];
+    
+    const reports = await db.select().from(healthReports).orderBy(desc(healthReports.createdAt));
+    return reports.filter(report => itemIds.includes(report.itemId));
+  }
+
+  // Appraisals
+  async createAppraisal(appraisal: InsertAppraisal): Promise<Appraisal> {
+    const [newAppraisal] = await db.insert(appraisals).values(appraisal).returning();
+    return newAppraisal;
+  }
+
+  async getAppraisalByItemId(itemId: string): Promise<Appraisal | null> {
+    const [appraisal] = await db.select().from(appraisals).where(eq(appraisals.itemId, itemId)).orderBy(desc(appraisals.createdAt)).limit(1);
+    return appraisal || null;
+  }
+
+  async getAppraisalsByIndustry(industryId: string): Promise<Appraisal[]> {
+    const itemsInIndustry = await this.getItemsByIndustry(industryId);
+    const itemIds = itemsInIndustry.map(item => item.id);
+    if (itemIds.length === 0) return [];
+    
+    const appraisalResults = await db.select().from(appraisals).orderBy(desc(appraisals.createdAt));
+    return appraisalResults.filter(appraisal => itemIds.includes(appraisal.itemId));
+  }
+
+  // Exchanges
+  async createExchange(exchange: InsertExchange): Promise<Exchange> {
+    const [newExchange] = await db.insert(exchanges).values(exchange).returning();
+    return newExchange;
+  }
+
+  async getExchangeById(id: string): Promise<Exchange | null> {
+    const [exchange] = await db.select().from(exchanges).where(eq(exchanges.id, id)).limit(1);
+    return exchange || null;
+  }
+
+  async getExchangesByOfferer(offererId: string): Promise<Exchange[]> {
+    return await db.select().from(exchanges).where(eq(exchanges.offererId, offererId)).orderBy(desc(exchanges.createdAt));
+  }
+
+  async getExchangesByReceiver(receiverId: string): Promise<Exchange[]> {
+    return await db.select().from(exchanges).where(eq(exchanges.receiverId, receiverId)).orderBy(desc(exchanges.createdAt));
+  }
+
+  async updateExchange(id: string, updates: Partial<Exchange>): Promise<Exchange | null> {
+    const [updatedExchange] = await db.update(exchanges).set(updates).where(eq(exchanges.id, id)).returning();
+    return updatedExchange || null;
   }
 }
 

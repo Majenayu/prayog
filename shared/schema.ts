@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, decimal, integer, timestamp, boolean, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -25,7 +25,66 @@ export const items = pgTable("items", {
   imageUrl: text("image_url").notNull(),
   imagePublicId: text("image_public_id"),
   status: text("status").notNull().default('available'), // 'available', 'on_rent', 'unavailable'
+  machineType: text("machine_type"), // Type of machine if this is a machine
+  purchaseDate: timestamp("purchase_date"), // When item was purchased
+  warrantyExpiry: timestamp("warranty_expiry"), // When warranty expires
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const machineParts = pgTable("machine_parts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  machineType: text("machine_type").notNull(), // e.g., "CNC Machine", "Hydraulic Press"
+  partName: text("part_name").notNull(),
+  partNumber: text("part_number"),
+  description: text("description").notNull(),
+  location: text("location").notNull(), // e.g., "Front panel, top-left", "Inside chamber"
+  imageUrl: text("image_url"), // Diagram showing location
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const healthReports = pgTable("health_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  itemId: text("item_id").notNull(),
+  overallCondition: text("overall_condition").notNull(), // 'excellent', 'good', 'fair', 'poor'
+  conditionScore: integer("condition_score").notNull(), // 0-100
+  visualInspection: text("visual_inspection"), // Notes from visual inspection
+  functionalTest: text("functional_test"), // Notes from functional testing
+  wearAndTear: text("wear_and_tear"), // Wear and tear assessment
+  defects: json("defects").$type<string[]>(), // List of detected defects
+  maintenanceHistory: json("maintenance_history").$type<{date: string, description: string}[]>(), // Maintenance records
+  estimatedLifeRemaining: text("estimated_life_remaining"), // e.g., "2 years", "500 hours"
+  inspectedBy: text("inspected_by"),
+  inspectionDate: timestamp("inspection_date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const appraisals = pgTable("appraisals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  itemId: text("item_id").notNull(),
+  appraisalMethod: text("appraisal_method").notNull(), // 'ml_vision', 'manual', 'hybrid'
+  estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }).notNull(),
+  conditionFactor: decimal("condition_factor", { precision: 3, scale: 2 }), // 0.00-1.00
+  ageFactor: decimal("age_factor", { precision: 3, scale: 2 }), // 0.00-1.00
+  marketDemand: text("market_demand"), // 'high', 'medium', 'low'
+  mlConfidence: decimal("ml_confidence", { precision: 3, scale: 2 }), // ML model confidence
+  imageAnalysis: json("image_analysis").$type<{defects: string[], quality_score: number}>(),
+  notes: text("notes"),
+  appraisedBy: text("appraised_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const exchanges = pgTable("exchanges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  offeredItemId: text("offered_item_id").notNull(), // Item being offered
+  requestedItemId: text("requested_item_id"), // Item requested in exchange (null if cash)
+  offererId: text("offerer_id").notNull(), // User making the offer
+  receiverId: text("receiver_id"), // User receiving the offer
+  exchangeType: text("exchange_type").notNull(), // 'item_for_item', 'item_for_cash', 'both'
+  cashAmount: decimal("cash_amount", { precision: 10, scale: 2 }), // Cash involved
+  status: text("status").notNull().default('pending'), // 'pending', 'accepted', 'rejected', 'completed'
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const rentals = pgTable("rentals", {
@@ -75,6 +134,29 @@ export const insertRentalSchema = createInsertSchema(rentals).omit({
   days: z.number().min(1, "Rental period must be at least 1 day"),
 });
 
+export const insertMachinePartSchema = createInsertSchema(machineParts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertHealthReportSchema = createInsertSchema(healthReports).omit({
+  id: true,
+  createdAt: true,
+  inspectionDate: true,
+});
+
+export const insertAppraisalSchema = createInsertSchema(appraisals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertExchangeSchema = createInsertSchema(exchanges).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -85,6 +167,18 @@ export type Item = typeof items.$inferSelect;
 export type InsertRental = z.infer<typeof insertRentalSchema>;
 export type Rental = typeof rentals.$inferSelect;
 
+export type InsertMachinePart = z.infer<typeof insertMachinePartSchema>;
+export type MachinePart = typeof machineParts.$inferSelect;
+
+export type InsertHealthReport = z.infer<typeof insertHealthReportSchema>;
+export type HealthReport = typeof healthReports.$inferSelect;
+
+export type InsertAppraisal = z.infer<typeof insertAppraisalSchema>;
+export type Appraisal = typeof appraisals.$inferSelect;
+
+export type InsertExchange = z.infer<typeof insertExchangeSchema>;
+export type Exchange = typeof exchanges.$inferSelect;
+
 // Extended types for API responses
 export type ItemWithIndustry = Item & {
   industryName?: string;
@@ -94,4 +188,16 @@ export type RentalWithDetails = Rental & {
   itemName?: string;
   userName?: string;
   imageUrl?: string;
+};
+
+export type ItemWithHealth = Item & {
+  healthReport?: HealthReport;
+  appraisal?: Appraisal;
+};
+
+export type ExchangeWithDetails = Exchange & {
+  offeredItem?: Item;
+  requestedItem?: Item;
+  offererName?: string;
+  receiverName?: string;
 };
