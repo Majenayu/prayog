@@ -66,9 +66,18 @@ export default function RepairsPage() {
       return;
     }
 
+    if (issueDescription.trim().length < 10) {
+      toast({
+        title: "Description too short",
+        description: "Issue description must be at least 10 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createMutation.mutate({
       itemId: selectedItemId,
-      issueDescription,
+      issueDescription: issueDescription.trim(),
       urgency,
     });
   };
