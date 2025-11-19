@@ -50,6 +50,7 @@ export interface IStorage {
   getMachinePartsByType(machineType: string): Promise<MachinePart[]>;
   getMachinePartById(id: string): Promise<MachinePart | null>;
   getAllMachineTypes(): Promise<string[]>;
+  updateMachinePartPosition(id: string, positionX: number, positionY: number): Promise<MachinePart | null>;
 
   // Health Reports
   createHealthReport(report: InsertHealthReport): Promise<HealthReport>;
@@ -167,6 +168,14 @@ export class PostgresStorage implements IStorage {
   async getAllMachineTypes(): Promise<string[]> {
     const results = await db.selectDistinct({ machineType: machineParts.machineType }).from(machineParts);
     return results.map(r => r.machineType).filter(Boolean);
+  }
+
+  async updateMachinePartPosition(id: string, positionX: number, positionY: number): Promise<MachinePart | null> {
+    const [updatedPart] = await db.update(machineParts)
+      .set({ positionX, positionY })
+      .where(eq(machineParts.id, id))
+      .returning();
+    return updatedPart || null;
   }
 
   // Health Reports

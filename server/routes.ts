@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { Readable } from "stream";
+import { z } from "zod";
 import { storage } from "./storage";
 import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema } from "@shared/schema";
 import { analyzeItemImage, generateHealthReport } from "./openai-service";
@@ -345,11 +346,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
+      // Check if user is an industry
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "industry") {
+        return res.status(403).json({ message: "Only industries can create machine parts" });
+      }
+
+      // Validate core fields with schema
       const validatedData = insertMachinePartSchema.parse(req.body);
-      const part = await storage.createMachinePart(validatedData);
+      
+      // Validate optional position fields separately
+      const positionSchema = z.object({
+        positionX: z.coerce.number().int().min(0).max(100).optional(),
+        positionY: z.coerce.number().int().min(0).max(100).optional(),
+        diagramImageUrl: z.string().url().optional().or(z.literal("")),
+      });
+      
+      const validatedPosition = positionSchema.parse({
+        positionX: req.body.positionX,
+        positionY: req.body.positionY,
+        diagramImageUrl: req.body.diagramImageUrl,
+      });
+      
+      const partData = {
+        ...validatedData,
+        ...validatedPosition,
+      };
+      
+      const part = await storage.createMachinePart(partData);
       res.json(part);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to create machine part" });
+    }
+  });
+
+  app.patch("/api/machine-parts/:id/position", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      // Check if user is an industry
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "industry") {
+        return res.status(403).json({ message: "Only industries can update machine parts" });
+      }
+
+      const { id } = req.params;
+      const { positionX, positionY } = req.body;
+
+      // Validate and coerce position values with Zod - strict mode requires both fields
+      const positionSchema = z.object({
+        positionX: z.coerce.number().int().min(0).max(100),
+        positionY: z.coerce.number().int().min(0).max(100),
+      }).strict();
+
+      // Reject undefined/null values before validation
+      if (positionX === undefined || positionX === null || positionY === undefined || positionY === null) {
+        return res.status(400).json({ message: "Both positionX and positionY are required" });
+      }
+
+      const validatedData = positionSchema.parse({ positionX, positionY });
+
+      const part = await storage.getMachinePartById(id);
+      if (!part) {
+        return res.status(404).json({ message: "Part not found" });
+      }
+
+      // Verify ownership: Part must belong to an item owned by this industry
+      // Since parts are global to machine types, we need to check if this industry can modify it
+      // For now, we'll allow any industry to position parts for their machine types
+      // In a production system, you'd link parts to specific items/industries
+      
+      const updatedPart = await storage.updateMachinePartPosition(id, validatedData.positionX, validatedData.positionY);
+      res.json(updatedPart);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update position" });
     }
   });
 

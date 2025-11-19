@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, LogOut, LayoutDashboard, PackageSearch, BarChart3 } from "lucide-react";
+import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, LogOut, LayoutDashboard, PackageSearch, BarChart3, Wrench } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import InventoryManagement from "@/components/inventory-management";
@@ -66,6 +66,15 @@ export default function IndustryDashboard() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setLocation("/industry/machine-parts")}
+                className="gap-2"
+                data-testid="button-manage-parts"
+              >
+                <Wrench className="h-4 w-4" />
+                <span className="hidden sm:inline">Machine Parts</span>
+              </Button>
               <Button
                 onClick={() => setShowAddItem(true)}
                 className="gap-2"
