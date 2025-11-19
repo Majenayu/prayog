@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ShoppingCart, LogOut, Package, Activity, DollarSign, ArrowLeftRight, Wrench } from "lucide-react";
+import { Search, ShoppingCart, LogOut, Package, Activity, DollarSign, ArrowLeftRight, Wrench, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { HealthReportDialog } from "@/components/health-report-dialog";
 import { AppraisalDialog } from "@/components/appraisal-dialog";
+import { AIAppraisalDialog } from "@/components/ai-appraisal-dialog";
 import { MachinePartsViewer } from "@/components/machine-parts-viewer";
 
 export default function Dashboard() {
@@ -21,7 +22,9 @@ export default function Dashboard() {
   const { user, logout: authLogout } = useAuth();
   const [healthReportOpen, setHealthReportOpen] = useState(false);
   const [appraisalOpen, setAppraisalOpen] = useState(false);
+  const [aiAppraisalOpen, setAiAppraisalOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string>("");
+  const [selectedItemName, setSelectedItemName] = useState<string>("");
 
   const { data: items, isLoading } = useQuery<ItemWithIndustry[]>({
     queryKey: ['/api/items'],
@@ -273,6 +276,21 @@ export default function Dashboard() {
                       Value
                     </Button>
                   </div>
+                  
+                  {user?.role === "user" && (
+                    <Button 
+                      size="sm"
+                      className="w-full text-xs gap-1 mt-2"
+                      onClick={() => {
+                        setSelectedItemId(item.id);
+                        setSelectedItemName(item.name);
+                        setAiAppraisalOpen(true);
+                      }}
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      AI Analysis
+                    </Button>
+                  )}
                 </CardContent>
 
                 <CardFooter>
@@ -302,6 +320,12 @@ export default function Dashboard() {
             itemId={selectedItemId}
             open={appraisalOpen}
             onOpenChange={setAppraisalOpen}
+          />
+          <AIAppraisalDialog 
+            itemId={selectedItemId}
+            itemName={selectedItemName}
+            open={aiAppraisalOpen}
+            onOpenChange={setAiAppraisalOpen}
           />
         </>
       )}

@@ -8,6 +8,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { Readable } from "stream";
 import { storage } from "./storage";
 import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema } from "@shared/schema";
+import { analyzeItemImage, generateHealthReport } from "./openai-service";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -197,6 +198,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageUrl: url,
         imagePublicId: publicId,
         industryId: req.session.userId,
+        machineType: validatedData.machineType || undefined,
+        purchaseDate: validatedData.purchaseDate || undefined,
+        warrantyExpiry: validatedData.warrantyExpiry || undefined,
       });
 
       res.json(item);
@@ -400,6 +404,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(appraisal);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to create appraisal" });
+    }
+  });
+
+  // AI-Powered Appraisal Routes (Users Only)
+  app.post("/api/ai/appraisal", upload.single("image"), async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "user") {
+        return res.status(403).json({ message: "This feature is only available for regular users" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Image is required for AI appraisal" });
+      }
+
+      const { itemId } = req.body;
+      if (!itemId) {
+        return res.status(400).json({ message: "Item ID is required" });
+      }
+
+      const item = await storage.getItemById(itemId);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const base64Image = req.file.buffer.toString('base64');
+      
+      const aiResult = await analyzeItemImage(base64Image, {
+        name: item.name,
+        category: item.category,
+        machineType: item.machineType || undefined,
+        purchaseDate: item.purchaseDate || undefined,
+        pricePerDay: item.pricePerDay,
+      });
+
+      if (!aiResult.estimatedValue || !aiResult.conditionScore || !aiResult.imageAnalysis) {
+        return res.status(502).json({ message: "AI service returned incomplete data. Please try again." });
+      }
+
+      const appraisal = await storage.createAppraisal({
+        itemId,
+        appraisalMethod: 'ml_vision',
+        estimatedValue: aiResult.estimatedValue.toString(),
+        conditionFactor: aiResult.conditionFactor.toString(),
+        ageFactor: aiResult.ageFactor.toString(),
+        marketDemand: aiResult.marketDemand,
+        mlConfidence: aiResult.mlConfidence.toString(),
+        imageAnalysis: aiResult.imageAnalysis,
+        notes: aiResult.notes,
+        appraisedBy: user.username,
+      });
+
+      res.json(appraisal);
+    } catch (error: any) {
+      console.error("AI appraisal error:", error);
+      if (error.message?.includes('AI appraisal failed')) {
+        res.status(502).json({ message: "AI service is temporarily unavailable. Please try again later." });
+      } else {
+        res.status(500).json({ message: error.message || "AI appraisal failed" });
+      }
+    }
+  });
+
+  app.post("/api/ai/health-report", upload.single("image"), async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "user") {
+        return res.status(403).json({ message: "This feature is only available for regular users" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "Image is required for AI health report" });
+      }
+
+      const { itemId } = req.body;
+      if (!itemId) {
+        return res.status(400).json({ message: "Item ID is required" });
+      }
+
+      const item = await storage.getItemById(itemId);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const base64Image = req.file.buffer.toString('base64');
+      
+      const aiResult = await generateHealthReport(base64Image, {
+        name: item.name,
+        category: item.category,
+        machineType: item.machineType || undefined,
+        purchaseDate: item.purchaseDate || undefined,
+      });
+
+      if (!aiResult.overallCondition || !aiResult.conditionScore || !aiResult.visualInspection) {
+        return res.status(502).json({ message: "AI service returned incomplete data. Please try again." });
+      }
+
+      const healthReport = await storage.createHealthReport({
+        itemId,
+        overallCondition: aiResult.overallCondition,
+        conditionScore: aiResult.conditionScore,
+        visualInspection: aiResult.visualInspection,
+        functionalTest: aiResult.functionalTest,
+        wearAndTear: aiResult.wearAndTear,
+        defects: aiResult.defects,
+        maintenanceHistory: [],
+        estimatedLifeRemaining: aiResult.estimatedLifeRemaining,
+        inspectedBy: `AI Assistant (${user.username})`,
+      });
+
+      res.json(healthReport);
+    } catch (error: any) {
+      console.error("AI health report error:", error);
+      if (error.message?.includes('AI health report generation failed')) {
+        res.status(502).json({ message: "AI service is temporarily unavailable. Please try again later." });
+      } else {
+        res.status(500).json({ message: error.message || "AI health report generation failed" });
+      }
     }
   });
 
