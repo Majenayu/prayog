@@ -100,6 +100,21 @@ export const rentals = pgTable("rentals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const repairRequests = pgTable("repair_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  itemId: text("item_id").notNull(),
+  userId: text("user_id").notNull(),
+  industryId: text("industry_id").notNull(),
+  issueDescription: text("issue_description").notNull(),
+  urgency: text("urgency").notNull(), // 'low', 'medium', 'high', 'critical'
+  status: text("status").notNull().default('pending'), // 'pending', 'in_progress', 'completed', 'cancelled'
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
+  actualCost: decimal("actual_cost", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -157,6 +172,18 @@ export const insertExchangeSchema = createInsertSchema(exchanges).omit({
   status: true,
 });
 
+export const insertRepairRequestSchema = createInsertSchema(repairRequests).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+  status: true,
+  userId: true,
+  industryId: true,
+}).extend({
+  issueDescription: z.string().min(10, "Issue description must be at least 10 characters"),
+  urgency: z.enum(['low', 'medium', 'high', 'critical']),
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -179,6 +206,9 @@ export type Appraisal = typeof appraisals.$inferSelect;
 export type InsertExchange = z.infer<typeof insertExchangeSchema>;
 export type Exchange = typeof exchanges.$inferSelect;
 
+export type InsertRepairRequest = z.infer<typeof insertRepairRequestSchema>;
+export type RepairRequest = typeof repairRequests.$inferSelect;
+
 // Extended types for API responses
 export type ItemWithIndustry = Item & {
   industryName?: string;
@@ -200,4 +230,10 @@ export type ExchangeWithDetails = Exchange & {
   requestedItem?: Item;
   offererName?: string;
   receiverName?: string;
+};
+
+export type RepairRequestWithDetails = RepairRequest & {
+  itemName?: string;
+  userName?: string;
+  imageUrl?: string;
 };

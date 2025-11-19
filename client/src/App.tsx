@@ -9,6 +9,7 @@ import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
 import IndustryDashboard from "@/pages/industry-dashboard";
 import ExchangesPage from "@/pages/exchanges";
+import RepairsPage from "@/pages/repairs";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: string }) {
@@ -63,6 +64,10 @@ function Router() {
       
       <Route path="/exchanges">
         <ProtectedRoute component={ExchangesPage} />
+      </Route>
+      
+      <Route path="/repairs">
+        <ProtectedRoute component={RepairsPage} />
       </Route>
       
       <Route path="/industry">

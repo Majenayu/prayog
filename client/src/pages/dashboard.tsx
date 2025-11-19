@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ShoppingCart, LogOut, Package, Activity, DollarSign, ArrowLeftRight } from "lucide-react";
+import { Search, ShoppingCart, LogOut, Package, Activity, DollarSign, ArrowLeftRight, Wrench } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { HealthReportDialog } from "@/components/health-report-dialog";
@@ -17,6 +17,7 @@ import { MachinePartsViewer } from "@/components/machine-parts-viewer";
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const { user, logout: authLogout } = useAuth();
   const [healthReportOpen, setHealthReportOpen] = useState(false);
   const [appraisalOpen, setAppraisalOpen] = useState(false);
@@ -31,11 +32,20 @@ export default function Dashboard() {
     setLocation("/");
   };
 
-  const filteredItems = items?.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const categories = items
+    ? Array.from(new Set(items.map(item => item.category))).sort()
+    : [];
+
+  const filteredItems = items?.filter(item => {
+    const matchesSearch = 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.description.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
+  }) || [];
 
   const availableItems = filteredItems.filter(item => item.availableQuantity > 0);
 
@@ -72,11 +82,19 @@ export default function Dashboard() {
               <MachinePartsViewer />
               <Button 
                 variant="outline"
+                onClick={() => setLocation("/repairs")}
+                className="gap-2"
+              >
+                <Wrench className="h-4 w-4" />
+                <span className="hidden sm:inline">Repairs</span>
+              </Button>
+              <Button 
+                variant="outline"
                 onClick={() => setLocation("/exchanges")}
                 className="gap-2"
               >
                 <ArrowLeftRight className="h-4 w-4" />
-                Exchanges
+                <span className="hidden sm:inline">Exchanges</span>
               </Button>
               <ThemeToggle />
               <Button
@@ -85,7 +103,7 @@ export default function Dashboard() {
                 data-testid="button-logout"
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                Logout
+                <span className="hidden sm:inline">Logout</span>
               </Button>
             </div>
           </div>
@@ -113,6 +131,31 @@ export default function Dashboard() {
           <p className="text-muted-foreground">
             Browse our marketplace • {availableItems.length} items available
           </p>
+        </div>
+
+        {/* Category Filter */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={selectedCategory === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory("all")}
+              className="rounded-full"
+            >
+              All Categories
+            </Button>
+            {categories.map((category) => (
+              <Button
+                key={category}
+                variant={selectedCategory === category ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+                className="rounded-full"
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {isLoading ? (

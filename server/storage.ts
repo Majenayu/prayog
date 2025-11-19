@@ -3,14 +3,15 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc } from "drizzle-orm";
 import { 
-  users, items, rentals, machineParts, healthReports, appraisals, exchanges,
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests,
   type User, type InsertUser, 
   type Item, type InsertItem, 
   type Rental, type InsertRental,
   type MachinePart, type InsertMachinePart,
   type HealthReport, type InsertHealthReport,
   type Appraisal, type InsertAppraisal,
-  type Exchange, type InsertExchange
+  type Exchange, type InsertExchange,
+  type RepairRequest, type InsertRepairRequest
 } from "@shared/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL || "";
@@ -66,6 +67,13 @@ export interface IStorage {
   getExchangesByOfferer(offererId: string): Promise<Exchange[]>;
   getExchangesByReceiver(receiverId: string): Promise<Exchange[]>;
   updateExchange(id: string, updates: Partial<Exchange>): Promise<Exchange | null>;
+
+  // Repair Requests
+  createRepairRequest(request: InsertRepairRequest): Promise<RepairRequest>;
+  getRepairRequestById(id: string): Promise<RepairRequest | null>;
+  getRepairRequestsByUser(userId: string): Promise<RepairRequest[]>;
+  getRepairRequestsByIndustry(industryId: string): Promise<RepairRequest[]>;
+  updateRepairRequest(id: string, updates: Partial<RepairRequest>): Promise<RepairRequest | null>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -223,6 +231,30 @@ export class PostgresStorage implements IStorage {
   async updateExchange(id: string, updates: Partial<Exchange>): Promise<Exchange | null> {
     const [updatedExchange] = await db.update(exchanges).set(updates).where(eq(exchanges.id, id)).returning();
     return updatedExchange || null;
+  }
+
+  // Repair Requests
+  async createRepairRequest(request: InsertRepairRequest): Promise<RepairRequest> {
+    const [newRequest] = await db.insert(repairRequests).values(request).returning();
+    return newRequest;
+  }
+
+  async getRepairRequestById(id: string): Promise<RepairRequest | null> {
+    const [request] = await db.select().from(repairRequests).where(eq(repairRequests.id, id)).limit(1);
+    return request || null;
+  }
+
+  async getRepairRequestsByUser(userId: string): Promise<RepairRequest[]> {
+    return await db.select().from(repairRequests).where(eq(repairRequests.userId, userId)).orderBy(desc(repairRequests.createdAt));
+  }
+
+  async getRepairRequestsByIndustry(industryId: string): Promise<RepairRequest[]> {
+    return await db.select().from(repairRequests).where(eq(repairRequests.industryId, industryId)).orderBy(desc(repairRequests.createdAt));
+  }
+
+  async updateRepairRequest(id: string, updates: Partial<RepairRequest>): Promise<RepairRequest | null> {
+    const [updatedRequest] = await db.update(repairRequests).set(updates).where(eq(repairRequests.id, id)).returning();
+    return updatedRequest || null;
   }
 }
 
