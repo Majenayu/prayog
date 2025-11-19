@@ -108,6 +108,9 @@ async function seedDatabase() {
       description: "Main spindle motor assembly",
       location: "Top center of machine, inside protective housing",
       imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+      diagramImageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=150",
+      positionX: 50,
+      positionY: 15,
     });
 
     await storage.createMachinePart({
@@ -117,6 +120,9 @@ async function seedDatabase() {
       description: "X-axis linear guide rail system",
       location: "Bottom front, running left to right",
       imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+      diagramImageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=150",
+      positionX: 50,
+      positionY: 85,
     });
 
     await storage.createMachinePart({
@@ -126,6 +132,9 @@ async function seedDatabase() {
       description: "Automatic tool changing mechanism",
       location: "Right side of machine head",
       imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+      diagramImageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=150",
+      positionX: 85,
+      positionY: 35,
     });
 
     await storage.createMachinePart({

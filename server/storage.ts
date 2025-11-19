@@ -46,7 +46,7 @@ export interface IStorage {
   updateRental(id: string, updates: Partial<Rental>): Promise<Rental | null>;
 
   // Machine Parts
-  createMachinePart(part: InsertMachinePart): Promise<MachinePart>;
+  createMachinePart(part: InsertMachinePart & { positionX?: number; positionY?: number; diagramImageUrl?: string }): Promise<MachinePart>;
   getMachinePartsByType(machineType: string): Promise<MachinePart[]>;
   getMachinePartById(id: string): Promise<MachinePart | null>;
   getAllMachineTypes(): Promise<string[]>;
@@ -150,7 +150,7 @@ export class PostgresStorage implements IStorage {
   }
 
   // Machine Parts
-  async createMachinePart(part: InsertMachinePart): Promise<MachinePart> {
+  async createMachinePart(part: InsertMachinePart & { positionX?: number; positionY?: number; diagramImageUrl?: string }): Promise<MachinePart> {
     const [newPart] = await db.insert(machineParts).values(part).returning();
     return newPart;
   }

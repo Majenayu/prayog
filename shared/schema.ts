@@ -39,6 +39,9 @@ export const machineParts = pgTable("machine_parts", {
   description: text("description").notNull(),
   location: text("location").notNull(), // e.g., "Front panel, top-left", "Inside chamber"
   imageUrl: text("image_url"), // Diagram showing location
+  positionX: integer("position_x"), // X coordinate for visual diagram (percentage or pixels)
+  positionY: integer("position_y"), // Y coordinate for visual diagram (percentage or pixels)
+  diagramImageUrl: text("diagram_image_url"), // Image of the specific part for diagram
   createdAt: timestamp("created_at").defaultNow(),
 });
 

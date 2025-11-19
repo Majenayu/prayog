@@ -14,6 +14,7 @@ import { HealthReportDialog } from "@/components/health-report-dialog";
 import { AppraisalDialog } from "@/components/appraisal-dialog";
 import { AIAppraisalDialog } from "@/components/ai-appraisal-dialog";
 import { MachinePartsViewer } from "@/components/machine-parts-viewer";
+import { MachineDiagramViewer } from "@/components/machine-diagram-viewer";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -82,6 +83,7 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-2">
+              <MachineDiagramViewer />
               <MachinePartsViewer />
               <Button 
                 variant="outline"
