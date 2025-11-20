@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, DollarSign, Calendar, Download } from "lucide-react";
+import { TrendingUp, IndianRupee, Calendar, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatCurrencyShort } from "@/lib/currency";
 
@@ -90,7 +90,7 @@ export default function RevenueAnalytics({ rentals, items }: RevenueAnalyticsPro
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-chart-3" data-testid="text-analytics-total">

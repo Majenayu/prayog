@@ -8,9 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Sparkles, DollarSign, TrendingUp, TrendingDown, Loader2, Camera, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, Sparkles, IndianRupee, TrendingUp, TrendingDown, Loader2, Camera, AlertCircle, CheckCircle } from "lucide-react";
 import { Appraisal, HealthReport } from "@shared/schema";
 import { format } from "date-fns";
+import { formatCurrency as formatCurrencyINR } from "@/lib/currency";
 
 interface AIAppraisalDialogProps {
   itemId: string;
@@ -107,12 +108,6 @@ export function AIAppraisalDialog({ itemId, itemName, open, onOpenChange }: AIAp
   const isLoading = appraisalMutation.isPending || healthReportMutation.isPending;
   const error = appraisalMutation.error || healthReportMutation.error;
 
-  const formatCurrency = (value: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(parseFloat(value));
-  };
 
   const getDemandColor = (demand: string) => {
     switch (demand) {
@@ -146,7 +141,7 @@ export function AIAppraisalDialog({ itemId, itemName, open, onOpenChange }: AIAp
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <IndianRupee className="h-5 w-5" />
               Estimated Market Value
             </CardTitle>
             <Badge className="bg-purple-500">
@@ -155,7 +150,7 @@ export function AIAppraisalDialog({ itemId, itemName, open, onOpenChange }: AIAp
           </div>
           <CardDescription>
             <span className="text-4xl font-bold text-primary">
-              {formatCurrency(appraisal.estimatedValue)}
+              {formatCurrencyINR(appraisal.estimatedValue)}
             </span>
           </CardDescription>
         </CardHeader>
@@ -356,7 +351,7 @@ export function AIAppraisalDialog({ itemId, itemName, open, onOpenChange }: AIAp
                 onClick={() => setAnalysisType('appraisal')}
                 className="flex-1"
               >
-                <DollarSign className="h-4 w-4 mr-2" />
+                <IndianRupee className="h-4 w-4 mr-2" />
                 Value Appraisal
               </Button>
               <Button

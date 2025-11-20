@@ -15,10 +15,24 @@ import { analyzeItemImage, generateHealthReport } from "./openai-service";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Validate Cloudinary configuration
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
+
+if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+  console.error("CLOUDINARY environment variables are not fully configured. Image uploads will not work.");
+  console.error("Missing:", {
+    cloud_name: !CLOUDINARY_CLOUD_NAME,
+    api_key: !CLOUDINARY_API_KEY,
+    api_secret: !CLOUDINARY_API_SECRET
+  });
+}
+
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: CLOUDINARY_CLOUD_NAME,
+  api_key: CLOUDINARY_API_KEY,
+  api_secret: CLOUDINARY_API_SECRET,
 });
 
 declare module "express-session" {

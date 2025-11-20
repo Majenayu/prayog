@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, TrendingUp, ShoppingBag, DollarSign, Plus, LogOut, LayoutDashboard, PackageSearch, BarChart3, Wrench } from "lucide-react";
+import { Package, TrendingUp, ShoppingBag, IndianRupee, Plus, LogOut, LayoutDashboard, PackageSearch, BarChart3, Wrench } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import InventoryManagement from "@/components/inventory-management";
@@ -144,7 +144,7 @@ export default function IndustryDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <IndianRupee className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-chart-3" data-testid="text-total-revenue">

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ShoppingCart, LogOut, Package, Activity, DollarSign, ArrowLeftRight, Wrench, Sparkles } from "lucide-react";
+import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeftRight, Wrench, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { HealthReportDialog } from "@/components/health-report-dialog";
@@ -275,7 +275,7 @@ export default function Dashboard() {
                         setAppraisalOpen(true);
                       }}
                     >
-                      <DollarSign className="h-3 w-3" />
+                      <IndianRupee className="h-3 w-3" />
                       Value
                     </Button>
                   </div>

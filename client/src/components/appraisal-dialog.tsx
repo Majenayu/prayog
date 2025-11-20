@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { TrendingUp, TrendingDown, DollarSign, Sparkles, AlertCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, IndianRupee, Sparkles, AlertCircle } from "lucide-react";
 import { Appraisal } from "@shared/schema";
 import { format } from "date-fns";
+import { formatCurrency as formatCurrencyINR } from "@/lib/currency";
 
 interface AppraisalDialogProps {
   itemId: string;
@@ -42,12 +43,6 @@ export function AppraisalDialog({ itemId, open, onOpenChange }: AppraisalDialogP
     }
   };
 
-  const formatCurrency = (value: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(parseFloat(value));
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -73,14 +68,14 @@ export function AppraisalDialog({ itemId, open, onOpenChange }: AppraisalDialogP
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
+                    <IndianRupee className="h-5 w-5" />
                     Estimated Market Value
                   </CardTitle>
                   {getMethodBadge(appraisal.appraisalMethod)}
                 </div>
                 <CardDescription>
                   <span className="text-4xl font-bold text-primary">
-                    {formatCurrency(appraisal.estimatedValue)}
+                    {formatCurrencyINR(appraisal.estimatedValue)}
                   </span>
                 </CardDescription>
               </CardHeader>
