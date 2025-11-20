@@ -9,7 +9,7 @@ import { Readable } from "stream";
 import { z } from "zod";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema, cartItems } from "@shared/schema";
+import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema, cartItems, type InsertMachinePart } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { analyzeItemImage, generateHealthReport } from "./openai-service";
 
@@ -370,9 +370,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         diagramImageUrl: req.body.diagramImageUrl,
       });
       
-      const partData = {
+      const partData: InsertMachinePart & { positionX?: number; positionY?: number; diagramImageUrl?: string } = {
         ...validatedData,
-        ...validatedPosition,
+        positionX: validatedPosition.positionX ?? undefined,
+        positionY: validatedPosition.positionY ?? undefined,
+        diagramImageUrl: validatedPosition.diagramImageUrl || undefined,
       };
       
       const part = await storage.createMachinePart(partData);
@@ -739,9 +741,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const repair = await storage.createRepairRequest({
         ...validatedData,
-        userId: req.session.userId,
+        userId: req.session.userId!,
         industryId: item.industryId,
-      });
+      } as any);
 
       res.json(repair);
     } catch (error: any) {
