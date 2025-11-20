@@ -27,7 +27,7 @@ export default function MachinesPage() {
   });
 
   const { data: selectedMachine, isLoading: machineLoading } = useQuery<MachineWithComponents>({
-    queryKey: ['/api/machines', params?.id],
+    queryKey: [`/api/machines/${params?.id}`],
     enabled: !!params?.id,
   });
 
