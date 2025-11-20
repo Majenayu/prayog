@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { ItemWithIndustry } from "@shared/schema";
@@ -7,15 +7,214 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeftRight, Wrench, Sparkles } from "lucide-react";
+import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeftRight, Wrench, CheckCircle2, AlertCircle, TrendingUp, Calendar, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { HealthReportDialog } from "@/components/health-report-dialog";
-import { AppraisalDialog } from "@/components/appraisal-dialog";
-import { AIAppraisalDialog } from "@/components/ai-appraisal-dialog";
-import { MachinePartsViewer } from "@/components/machine-parts-viewer";
-import { MachineDiagramViewer } from "@/components/machine-diagram-viewer";
 import { formatCurrency } from "@/lib/currency";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+
+interface FakeDialogProps {
+  item: ItemWithIndustry;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function FakeHealthReportDialog({ item, open, onOpenChange }: FakeDialogProps) {
+  const reportData = useMemo(() => {
+    const healthScore = Math.floor(Math.random() * 20) + 75;
+    const efficiency = Math.floor(Math.random() * 15) + 82;
+    const partsCondition = Math.floor(Math.random() * 25) + 70;
+    
+    const lastInspection = new Date();
+    lastInspection.setDate(lastInspection.getDate() - Math.floor(Math.random() * 30));
+    
+    const nextMaintenance = new Date();
+    nextMaintenance.setDate(nextMaintenance.getDate() + Math.floor(Math.random() * 60) + 30);
+    
+    const maintenanceHours = Math.floor(Math.random() * 50) + 50;
+    
+    return {
+      healthScore,
+      efficiency,
+      partsCondition,
+      lastInspection,
+      nextMaintenance,
+      maintenanceHours
+    };
+  }, [item.id, open]);
+  
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Health Report: {item.name}</DialogTitle>
+          <DialogDescription>Comprehensive condition assessment for industrial equipment</DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-full bg-green-500/10">
+                <CheckCircle2 className="h-6 w-6 text-green-500" />
+              </div>
+              <div>
+                <p className="font-semibold text-lg">Overall Health Score</p>
+                <p className="text-sm text-muted-foreground">Excellent condition</p>
+              </div>
+            </div>
+            <div className="text-4xl font-bold text-green-500">{reportData.healthScore}%</div>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Operational Efficiency</span>
+                <span className="text-sm font-semibold">{reportData.efficiency}%</span>
+              </div>
+              <Progress value={reportData.efficiency} className="h-2" />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Parts Condition</span>
+                <span className="text-sm font-semibold">{reportData.partsCondition}%</span>
+              </div>
+              <Progress value={reportData.partsCondition} className="h-2" />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                Last Inspection
+              </div>
+              <p className="font-semibold">{reportData.lastInspection.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Zap className="h-4 w-4" />
+                Next Maintenance
+              </div>
+              <p className="font-semibold">{reportData.nextMaintenance.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+            <h4 className="font-semibold mb-2 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-500" />
+              Maintenance Recommendations
+            </h4>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              <li>• Hydraulic fluid levels optimal</li>
+              <li>• Check belt tension after {reportData.maintenanceHours} operating hours</li>
+              <li>• Replace air filters in next scheduled maintenance</li>
+              <li>• Lubrication system functioning normally</li>
+            </ul>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FakeAppraisalDialog({ item, open, onOpenChange }: FakeDialogProps) {
+  const appraisalData = useMemo(() => {
+    const baseValue = parseFloat(item.pricePerDay) * 300;
+    const estimatedValue = Math.floor(baseValue * (0.9 + Math.random() * 0.3));
+    const marketDemand = ['High', 'Very High', 'Moderate'][Math.floor(Math.random() * 3)];
+    const appreciation = Math.floor(Math.random() * 15) - 5;
+    const roi = Math.floor(Math.random() * 10) + 15;
+    
+    return {
+      estimatedValue,
+      marketDemand,
+      appreciation,
+      roi
+    };
+  }, [item.id, item.pricePerDay, open]);
+  
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Market Value Appraisal: {item.name}</DialogTitle>
+          <DialogDescription>Professional valuation for industrial machinery</DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-full bg-primary/10">
+                <IndianRupee className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-lg">Estimated Market Value</p>
+                <p className="text-sm text-muted-foreground">Based on current market conditions</p>
+              </div>
+            </div>
+            <div className="text-4xl font-bold text-primary">{formatCurrency(appraisalData.estimatedValue)}</div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <TrendingUp className="h-4 w-4" />
+                Market Demand
+              </div>
+              <p className="font-semibold text-lg">{appraisalData.marketDemand}</p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+              <div className="text-sm text-muted-foreground">Daily Rental Rate</div>
+              <p className="font-semibold text-lg">{formatCurrency(item.pricePerDay)}</p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+              <div className="text-sm text-muted-foreground">12-Month Trend</div>
+              <p className={`font-semibold text-lg ${appraisalData.appreciation >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {appraisalData.appreciation >= 0 ? '+' : ''}{appraisalData.appreciation}%
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="font-semibold">Valuation Breakdown</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between p-3 rounded-lg bg-muted/30">
+                <span className="text-sm">Base Equipment Value</span>
+                <span className="font-semibold">{formatCurrency(Math.floor(appraisalData.estimatedValue * 0.7))}</span>
+              </div>
+              <div className="flex justify-between p-3 rounded-lg bg-muted/30">
+                <span className="text-sm">Market Adjustment</span>
+                <span className="font-semibold">{formatCurrency(Math.floor(appraisalData.estimatedValue * 0.15))}</span>
+              </div>
+              <div className="flex justify-between p-3 rounded-lg bg-muted/30">
+                <span className="text-sm">Condition Premium</span>
+                <span className="font-semibold">{formatCurrency(Math.floor(appraisalData.estimatedValue * 0.15))}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+            <h4 className="font-semibold mb-2 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Market Insights
+            </h4>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              <li>• Strong demand for {item.category} equipment in industrial sector</li>
+              <li>• Comparable units selling at {formatCurrency(Math.floor(appraisalData.estimatedValue * 0.95))} - {formatCurrency(Math.floor(appraisalData.estimatedValue * 1.05))}</li>
+              <li>• Expected ROI: {appraisalData.roi}% annually through rentals</li>
+              <li>• Equipment age and maintenance history support current valuation</li>
+            </ul>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -24,9 +223,7 @@ export default function Dashboard() {
   const { user, logout: authLogout } = useAuth();
   const [healthReportOpen, setHealthReportOpen] = useState(false);
   const [appraisalOpen, setAppraisalOpen] = useState(false);
-  const [aiAppraisalOpen, setAiAppraisalOpen] = useState(false);
-  const [selectedItemId, setSelectedItemId] = useState<string>("");
-  const [selectedItemName, setSelectedItemName] = useState<string>("");
+  const [selectedItem, setSelectedItem] = useState<ItemWithIndustry | null>(null);
 
   const { data: items, isLoading } = useQuery<ItemWithIndustry[]>({
     queryKey: ['/api/items'],
@@ -84,8 +281,6 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              <MachineDiagramViewer />
-              <MachinePartsViewer />
               <Button 
                 variant="outline"
                 onClick={() => setLocation("/repairs")}
@@ -259,7 +454,7 @@ export default function Dashboard() {
                       size="sm"
                       className="flex-1 text-xs gap-1"
                       onClick={() => {
-                        setSelectedItemId(item.id);
+                        setSelectedItem(item);
                         setHealthReportOpen(true);
                       }}
                     >
@@ -271,7 +466,7 @@ export default function Dashboard() {
                       size="sm"
                       className="flex-1 text-xs gap-1"
                       onClick={() => {
-                        setSelectedItemId(item.id);
+                        setSelectedItem(item);
                         setAppraisalOpen(true);
                       }}
                     >
@@ -279,21 +474,6 @@ export default function Dashboard() {
                       Value
                     </Button>
                   </div>
-                  
-                  {user?.role === "user" && (
-                    <Button 
-                      size="sm"
-                      className="w-full text-xs gap-1 mt-2"
-                      onClick={() => {
-                        setSelectedItemId(item.id);
-                        setSelectedItemName(item.name);
-                        setAiAppraisalOpen(true);
-                      }}
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      AI Analysis
-                    </Button>
-                  )}
                 </CardContent>
 
                 <CardFooter>
@@ -311,24 +491,18 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* Dialogs */}
-      {selectedItemId && (
+      {/* Fake Report Dialogs */}
+      {selectedItem && (
         <>
-          <HealthReportDialog 
-            itemId={selectedItemId}
+          <FakeHealthReportDialog 
+            item={selectedItem}
             open={healthReportOpen}
             onOpenChange={setHealthReportOpen}
           />
-          <AppraisalDialog 
-            itemId={selectedItemId}
+          <FakeAppraisalDialog 
+            item={selectedItem}
             open={appraisalOpen}
             onOpenChange={setAppraisalOpen}
-          />
-          <AIAppraisalDialog 
-            itemId={selectedItemId}
-            itemName={selectedItemName}
-            open={aiAppraisalOpen}
-            onOpenChange={setAiAppraisalOpen}
           />
         </>
       )}
