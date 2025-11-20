@@ -9,7 +9,7 @@ import { Readable } from "stream";
 import { z } from "zod";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema, cartItems, type InsertMachinePart } from "@shared/schema";
+import { insertUserSchema, insertItemSchema, insertProductSchema, insertIndustryProductSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema, cartItems, type InsertMachinePart } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { analyzeItemImage, generateHealthReport } from "./openai-service";
 
@@ -162,8 +162,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Item Routes
   app.get("/api/items", async (req, res) => {
     try {
-      const items = await storage.getItems();
-      res.json(items);
+      const industryProducts = await storage.getIndustryProducts();
+      res.json(industryProducts);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to fetch items" });
     }
@@ -175,8 +175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
-      const items = await storage.getItemsByIndustry(req.session.userId);
-      res.json(items);
+      const industryProducts = await storage.getIndustryProductsByIndustry(req.session.userId);
+      res.json(industryProducts);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to fetch items" });
     }
@@ -199,7 +199,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { url, publicId } = await uploadToCloudinary(req.file.buffer);
 
-      const itemData = {
+      const commonData = {
+        name: req.body.name,
+        description: req.body.description,
+        category: req.body.category,
+        imageUrl: url,
+        createdById: req.session.userId,
+      };
+
+      const validatedCommonData = insertProductSchema.omit({ imageUrl: true }).parse(commonData);
+
+      const product = await storage.createProduct({
+        ...validatedCommonData,
+        imageUrl: url,
+        imagePublicId: publicId,
+        machineType: req.body.machineType || undefined,
+      });
+
+      const industryData = {
+        productId: product.id,
+        industryId: req.session.userId,
         name: req.body.name,
         description: req.body.description,
         category: req.body.category,
@@ -208,19 +227,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageUrl: url,
       };
 
-      const validatedData = insertItemSchema.omit({ imageUrl: true }).parse(itemData);
+      const validatedIndustryData = insertIndustryProductSchema.omit({ imageUrl: true }).parse(industryData);
 
-      const item = await storage.createItem({
-        ...validatedData,
+      const industryProduct = await storage.createIndustryProduct({
+        ...validatedIndustryData,
         imageUrl: url,
         imagePublicId: publicId,
-        industryId: req.session.userId,
-        machineType: validatedData.machineType || undefined,
-        purchaseDate: validatedData.purchaseDate || undefined,
-        warrantyExpiry: validatedData.warrantyExpiry || undefined,
+        machineType: req.body.machineType || undefined,
+        purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : undefined,
+        warrantyExpiry: req.body.warrantyExpiry ? new Date(req.body.warrantyExpiry) : undefined,
       });
 
-      res.json(item);
+      res.json(industryProduct);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to create item" });
     }
@@ -237,12 +255,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only industries can update item availability" });
       }
 
-      const item = await storage.getItemById(req.params.id);
-      if (!item) {
+      const product = await storage.getIndustryProductById(req.params.id);
+      if (!product) {
         return res.status(404).json({ message: "Item not found" });
       }
 
-      if (item.industryId !== req.session.userId) {
+      if (product.industryId !== req.session.userId) {
         return res.status(403).json({ message: "Not authorized to update this item" });
       }
 
@@ -251,8 +269,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid status. Must be 'available' or 'unavailable'" });
       }
 
-      const updatedItem = await storage.updateItem(req.params.id, { status });
-      res.json(updatedItem);
+      const updatedProduct = await storage.updateIndustryProduct(req.params.id, { status });
+      res.json(updatedProduct);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to update availability" });
     }
@@ -264,24 +282,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Not authenticated" });
       }
 
-      const item = await storage.getItemById(req.params.id);
-      if (!item) {
+      const product = await storage.getIndustryProductById(req.params.id);
+      if (!product) {
         return res.status(404).json({ message: "Item not found" });
       }
 
-      if (item.industryId !== req.session.userId) {
+      if (product.industryId !== req.session.userId) {
         return res.status(403).json({ message: "Not authorized to delete this item" });
       }
 
-      if (item.imagePublicId) {
+      if (product.imagePublicId) {
         try {
-          await cloudinary.uploader.destroy(item.imagePublicId);
+          await cloudinary.uploader.destroy(product.imagePublicId);
         } catch (error) {
           console.error("Failed to delete image from Cloudinary:", error);
         }
       }
 
-      await storage.deleteItem(req.params.id);
+      await storage.deleteIndustryProduct(req.params.id);
       res.json({ message: "Item deleted successfully" });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to delete item" });
@@ -309,14 +327,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const rentalsWithDetails = await Promise.all(
         rentals.map(async (rental) => {
-          const item = await storage.getItemById(rental.itemId);
+          const product = await storage.getIndustryProductById(rental.itemId);
           const renter = await storage.getUserById(rental.userId);
           
           return {
             ...rental,
-            itemName: item?.name,
+            itemName: product?.name,
             userName: renter?.username,
-            imageUrl: item?.imageUrl,
+            imageUrl: product?.imageUrl,
           };
         })
       );
@@ -339,28 +357,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid rental data" });
       }
 
-      const item = await storage.getItemById(itemId);
-      if (!item) {
+      const product = await storage.getIndustryProductById(itemId);
+      if (!product) {
         return res.status(404).json({ message: "Item not found" });
       }
 
-      if (item.availableQuantity < 1) {
+      if (product.availableQuantity < 1) {
         return res.status(400).json({ message: "Item not available" });
       }
 
-      const totalAmount = (parseFloat(item.pricePerDay) * days).toFixed(2);
+      const totalAmount = (parseFloat(product.pricePerDay) * days).toFixed(2);
 
       const rental = await storage.createRental({
         itemId,
         userId: req.session.userId,
-        industryId: item.industryId,
+        industryId: product.industryId,
         startDate: new Date(),
         days,
         totalAmount,
       });
 
-      await storage.updateItem(itemId, {
-        availableQuantity: item.availableQuantity - 1,
+      await storage.updateIndustryProduct(itemId, {
+        availableQuantity: product.availableQuantity - 1,
       });
 
       res.json(rental);
