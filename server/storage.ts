@@ -3,9 +3,11 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc, and } from "drizzle-orm";
 import { 
-  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals, carts, cartItems,
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals, carts, cartItems, products, industryProducts,
   type User, type InsertUser, 
   type Item, type InsertItem, 
+  type Product, type InsertProduct,
+  type IndustryProduct, type InsertIndustryProduct,
   type Rental, type InsertRental,
   type MachinePart, type InsertMachinePart,
   type HealthReport, type InsertHealthReport,
@@ -35,7 +37,20 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | null>;
   getUserById(id: string): Promise<User | null>;
 
-  // Items
+  // Products (common catalog)
+  createProduct(product: Omit<InsertProduct, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; createdById: string; machineType?: string }): Promise<Product>;
+  getProducts(): Promise<Product[]>;
+  getProductById(id: string): Promise<Product | null>;
+
+  // Industry Products (editable copies)
+  createIndustryProduct(product: Omit<InsertIndustryProduct, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; productId: string; industryId: string; machineType?: string; purchaseDate?: Date; warrantyExpiry?: Date }): Promise<IndustryProduct>;
+  getIndustryProducts(): Promise<IndustryProduct[]>;
+  getIndustryProductById(id: string): Promise<IndustryProduct | null>;
+  getIndustryProductsByIndustry(industryId: string): Promise<IndustryProduct[]>;
+  updateIndustryProduct(id: string, updates: Partial<IndustryProduct>): Promise<IndustryProduct | null>;
+  deleteIndustryProduct(id: string): Promise<boolean>;
+
+  // Items (legacy - for backward compatibility)
   createItem(item: Omit<InsertItem, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; industryId: string; machineType?: string; purchaseDate?: Date; warrantyExpiry?: Date }): Promise<Item>;
   getItems(): Promise<Item[]>;
   getItemById(id: string): Promise<Item | null>;
@@ -128,7 +143,54 @@ export class PostgresStorage implements IStorage {
     return user || null;
   }
 
-  // Items
+  // Products (common catalog)
+  async createProduct(product: Omit<InsertProduct, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; createdById: string; machineType?: string }): Promise<Product> {
+    const [newProduct] = await db.insert(products).values(product).returning();
+    return newProduct;
+  }
+
+  async getProducts(): Promise<Product[]> {
+    return await db.select().from(products).orderBy(desc(products.createdAt));
+  }
+
+  async getProductById(id: string): Promise<Product | null> {
+    const [product] = await db.select().from(products).where(eq(products.id, id)).limit(1);
+    return product || null;
+  }
+
+  // Industry Products (editable copies)
+  async createIndustryProduct(product: Omit<InsertIndustryProduct, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; productId: string; industryId: string; machineType?: string; purchaseDate?: Date; warrantyExpiry?: Date }): Promise<IndustryProduct> {
+    const [newProduct] = await db.insert(industryProducts).values({
+      ...product,
+      availableQuantity: product.quantity,
+    }).returning();
+    return newProduct;
+  }
+
+  async getIndustryProducts(): Promise<IndustryProduct[]> {
+    return await db.select().from(industryProducts).orderBy(desc(industryProducts.createdAt));
+  }
+
+  async getIndustryProductById(id: string): Promise<IndustryProduct | null> {
+    const [product] = await db.select().from(industryProducts).where(eq(industryProducts.id, id)).limit(1);
+    return product || null;
+  }
+
+  async getIndustryProductsByIndustry(industryId: string): Promise<IndustryProduct[]> {
+    return await db.select().from(industryProducts).where(eq(industryProducts.industryId, industryId)).orderBy(desc(industryProducts.createdAt));
+  }
+
+  async updateIndustryProduct(id: string, updates: Partial<IndustryProduct>): Promise<IndustryProduct | null> {
+    const [updatedProduct] = await db.update(industryProducts).set(updates).where(eq(industryProducts.id, id)).returning();
+    return updatedProduct || null;
+  }
+
+  async deleteIndustryProduct(id: string): Promise<boolean> {
+    const result = await db.delete(industryProducts).where(eq(industryProducts.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Items (legacy)
   async createItem(item: Omit<InsertItem, 'imageUrl'> & { imageUrl: string; imagePublicId?: string; industryId: string; machineType?: string; purchaseDate?: Date; warrantyExpiry?: Date }): Promise<Item> {
     const [newItem] = await db.insert(items).values({
       ...item,

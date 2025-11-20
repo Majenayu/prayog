@@ -13,6 +13,42 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Common product catalog - shared reference data that all users can view
+export const products = pgTable("products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  imageUrl: text("image_url").notNull(),
+  imagePublicId: text("image_public_id"),
+  machineType: text("machine_type"),
+  createdById: text("created_by_id").notNull(), // Industry that first created this product
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Industry-specific product copies - editable by each industry
+export const industryProducts = pgTable("industry_products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  productId: text("product_id").notNull(), // Reference to products table
+  industryId: text("industry_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  pricePerDay: decimal("price_per_day", { precision: 10, scale: 2 }).notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  availableQuantity: integer("available_quantity").notNull().default(1),
+  imageUrl: text("image_url").notNull(),
+  imagePublicId: text("image_public_id"),
+  status: text("status").notNull().default('available'), // 'available', 'on_rent', 'unavailable'
+  machineType: text("machine_type"),
+  parentItemId: text("parent_item_id"),
+  partPosition: text("part_position"),
+  purchaseDate: timestamp("purchase_date"),
+  warrantyExpiry: timestamp("warranty_expiry"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Legacy items table - keep for backward compatibility, will migrate data
 export const items = pgTable("items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   industryId: text("industry_id").notNull(),
@@ -180,6 +216,29 @@ export const insertUserSchema = createInsertSchema(users).omit({
   companyName: z.string().optional(),
 });
 
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  category: z.string().min(2, "Category is required"),
+  imageUrl: z.string().url("Valid image URL required"),
+});
+
+export const insertIndustryProductSchema = createInsertSchema(industryProducts).omit({
+  id: true,
+  createdAt: true,
+  availableQuantity: true,
+}).extend({
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  category: z.string().min(2, "Category is required"),
+  pricePerDay: z.string().min(1, "Price is required"),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+  imageUrl: z.string().url("Valid image URL required"),
+});
+
 export const insertItemSchema = createInsertSchema(items).omit({
   id: true,
   createdAt: true,
@@ -271,6 +330,12 @@ export const insertCartItemSchema = createInsertSchema(cartItems).omit({
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Product = typeof products.$inferSelect;
+
+export type InsertIndustryProduct = z.infer<typeof insertIndustryProductSchema>;
+export type IndustryProduct = typeof industryProducts.$inferSelect;
 
 export type InsertItem = z.infer<typeof insertItemSchema>;
 export type Item = typeof items.$inferSelect;
