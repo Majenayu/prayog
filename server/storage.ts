@@ -3,7 +3,7 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc, and } from "drizzle-orm";
 import { 
-  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals, carts, cartItems, products, industryProducts, machines, machineComponents,
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges, expertContacts, itemParts, partRentals, carts, cartItems, products, industryProducts, machines, machineComponents,
   type User, type InsertUser, 
   type Item, type InsertItem, 
   type Product, type InsertProduct,
@@ -13,7 +13,7 @@ import {
   type HealthReport, type InsertHealthReport,
   type Appraisal, type InsertAppraisal,
   type Exchange, type InsertExchange,
-  type RepairRequest, type InsertRepairRequest,
+  type ExpertContact, type InsertExpertContact,
   type ItemPart, type InsertItemPart,
   type PartRental, type InsertPartRental,
   type Cart, type InsertCart,
@@ -91,12 +91,10 @@ export interface IStorage {
   getExchangesByReceiver(receiverId: string): Promise<Exchange[]>;
   updateExchange(id: string, updates: Partial<Exchange>): Promise<Exchange | null>;
 
-  // Repair Requests
-  createRepairRequest(request: InsertRepairRequest): Promise<RepairRequest>;
-  getRepairRequestById(id: string): Promise<RepairRequest | null>;
-  getRepairRequestsByUser(userId: string): Promise<RepairRequest[]>;
-  getRepairRequestsByIndustry(industryId: string): Promise<RepairRequest[]>;
-  updateRepairRequest(id: string, updates: Partial<RepairRequest>): Promise<RepairRequest | null>;
+  // Expert Contacts
+  createExpertContact(contact: InsertExpertContact): Promise<ExpertContact>;
+  getExpertContacts(): Promise<ExpertContact[]>;
+  getExpertContactById(id: string): Promise<ExpertContact | null>;
 
   // Item Parts
   createItemPart(part: InsertItemPart): Promise<ItemPart>;
@@ -350,28 +348,19 @@ export class PostgresStorage implements IStorage {
     return updatedExchange || null;
   }
 
-  // Repair Requests
-  async createRepairRequest(request: InsertRepairRequest): Promise<RepairRequest> {
-    const [newRequest] = await db.insert(repairRequests).values(request).returning();
-    return newRequest;
+  // Expert Contacts
+  async createExpertContact(contact: InsertExpertContact): Promise<ExpertContact> {
+    const [newContact] = await db.insert(expertContacts).values(contact).returning();
+    return newContact;
   }
 
-  async getRepairRequestById(id: string): Promise<RepairRequest | null> {
-    const [request] = await db.select().from(repairRequests).where(eq(repairRequests.id, id)).limit(1);
-    return request || null;
+  async getExpertContacts(): Promise<ExpertContact[]> {
+    return await db.select().from(expertContacts).orderBy(expertContacts.role);
   }
 
-  async getRepairRequestsByUser(userId: string): Promise<RepairRequest[]> {
-    return await db.select().from(repairRequests).where(eq(repairRequests.userId, userId)).orderBy(desc(repairRequests.createdAt));
-  }
-
-  async getRepairRequestsByIndustry(industryId: string): Promise<RepairRequest[]> {
-    return await db.select().from(repairRequests).where(eq(repairRequests.industryId, industryId)).orderBy(desc(repairRequests.createdAt));
-  }
-
-  async updateRepairRequest(id: string, updates: Partial<RepairRequest>): Promise<RepairRequest | null> {
-    const [updatedRequest] = await db.update(repairRequests).set(updates).where(eq(repairRequests.id, id)).returning();
-    return updatedRequest || null;
+  async getExpertContactById(id: string): Promise<ExpertContact | null> {
+    const [contact] = await db.select().from(expertContacts).where(eq(expertContacts.id, id)).limit(1);
+    return contact || null;
   }
 
   // Item Parts

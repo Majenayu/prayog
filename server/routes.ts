@@ -893,113 +893,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Repair Requests Routes
-  app.get("/api/repairs/my-requests", async (req, res) => {
+  // Expert Contacts Routes
+  app.get("/api/contacts", async (req, res) => {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
-      const user = await storage.getUserById(req.session.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      let repairs;
-      if (user.role === "industry") {
-        repairs = await storage.getRepairRequestsByIndustry(req.session.userId);
-      } else {
-        repairs = await storage.getRepairRequestsByUser(req.session.userId);
-      }
-
-      const repairsWithDetails = (await Promise.all(
-        repairs.map(async (repair) => {
-          const item = await storage.getItemById(repair.itemId);
-          const requestUser = await storage.getUserById(repair.userId);
-
-          if (!item) {
-            return null;
-          }
-
-          return {
-            ...repair,
-            itemName: item.name,
-            userName: requestUser?.username,
-            imageUrl: item.imageUrl,
-          };
-        })
-      )).filter(repair => repair !== null);
-
-      res.json(repairsWithDetails);
+      const contacts = await storage.getExpertContacts();
+      res.json(contacts);
     } catch (error: any) {
-      res.status(500).json({ message: error.message || "Failed to fetch repair requests" });
-    }
-  });
-
-  app.post("/api/repairs", async (req, res) => {
-    try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
-      const validatedData = insertRepairRequestSchema.parse(req.body);
-      
-      const item = await storage.getItemById(validatedData.itemId);
-      if (!item) {
-        return res.status(404).json({ message: "Item not found" });
-      }
-
-      const repair = await storage.createRepairRequest({
-        ...validatedData,
-        userId: req.session.userId!,
-        industryId: item.industryId,
-      } as any);
-
-      res.json(repair);
-    } catch (error: any) {
-      res.status(400).json({ message: error.message || "Failed to create repair request" });
-    }
-  });
-
-  app.patch("/api/repairs/:id", async (req, res) => {
-    try {
-      if (!req.session.userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-
-      const user = await storage.getUserById(req.session.userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const existingRepair = await storage.getRepairRequestById(req.params.id);
-      if (!existingRepair) {
-        return res.status(404).json({ message: "Repair request not found" });
-      }
-
-      if (user.role === "industry") {
-        if (existingRepair.industryId !== req.session.userId) {
-          return res.status(403).json({ message: "Not authorized to update this repair request" });
-        }
-      } else {
-        if (existingRepair.userId !== req.session.userId) {
-          return res.status(403).json({ message: "Not authorized to update this repair request" });
-        }
-        const allowedFields = ['notes'];
-        const hasDisallowedFields = Object.keys(req.body).some(key => !allowedFields.includes(key));
-        if (hasDisallowedFields) {
-          return res.status(403).json({ message: "Users can only update notes field" });
-        }
-      }
-
-      const repair = await storage.updateRepairRequest(req.params.id, req.body);
-      if (!repair) {
-        return res.status(404).json({ message: "Repair request not found" });
-      }
-
-      res.json(repair);
-    } catch (error: any) {
-      res.status(400).json({ message: error.message || "Failed to update repair request" });
+      res.status(500).json({ message: error.message || "Failed to fetch contacts" });
     }
   });
 

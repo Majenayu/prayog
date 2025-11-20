@@ -428,6 +428,56 @@ async function seedDatabase() {
     console.log("      4. Industrial Vacuum Gripper Assembly (middle-right) - $165/day");
     console.log("         • Multi-suction zones for various materials\n");
 
+    await storage.createExpertContact({
+      name: "Rajesh Kumar",
+      role: "cnc_expert",
+      expertise: "Specialized in CNC machinery operations, programming, and precision manufacturing with over 15 years of experience in computer numerical control systems.",
+      phone: "9483246283",
+      email: "pgayushrai@gmail.com",
+    });
+
+    await storage.createExpertContact({
+      name: "Amit Sharma",
+      role: "hydraulic_expert",
+      expertise: "Expert in hydraulic systems, fluid mechanics, and pressure control systems. Provides consultation on hydraulic press operations, maintenance, and troubleshooting.",
+      phone: "9483246283",
+      email: "pgayushrai@gmail.com",
+    });
+
+    await storage.createExpertContact({
+      name: "Priya Patel",
+      role: "electrical_expert",
+      expertise: "Electrical engineering specialist focusing on industrial electrical systems, motor controls, and power distribution for manufacturing equipment.",
+      phone: "9483246283",
+      email: "pgayushrai@gmail.com",
+    });
+
+    await storage.createExpertContact({
+      name: "Vikram Singh",
+      role: "mechanical_expert",
+      expertise: "Mechanical engineering expert with deep knowledge in machine design, structural analysis, and preventive maintenance for industrial machinery.",
+      phone: "9483246283",
+      email: "pgayushrai@gmail.com",
+    });
+
+    await storage.createExpertContact({
+      name: "Neha Gupta",
+      role: "industrial_automation_expert",
+      expertise: "Automation and robotics specialist. Expert in PLC programming, SCADA systems, and implementing automated solutions for industrial processes.",
+      phone: "9483246283",
+      email: "pgayushrai@gmail.com",
+    });
+
+    await storage.createExpertContact({
+      name: "Customer Support Team",
+      role: "customer_support",
+      expertise: "Available 24/7 to assist with equipment rentals, bookings, technical support, and any questions about our RentHub platform services.",
+      phone: "9483246283",
+      email: "pgayushrai@gmail.com",
+    });
+
+    console.log("✅ Created 6 expert contacts (5 experts + 1 customer support)");
+
   } catch (error) {
     console.error("❌ Error seeding database:", error);
     process.exit(1);
