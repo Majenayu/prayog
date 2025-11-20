@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Reports - RentHub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-content">
+      <h1 class="nav-logo">🏗️ RentHub</h1>
+      <div class="nav-menu">
+        <a href="dashboard.html" class="nav-link">Dashboard</a>
+        <a href="appraisal.html" class="nav-link">AI Appraisal</a>
+        <a href="health-report.html" class="nav-link active">Health Reports</a>
+        <a href="machine-parts.html" class="nav-link">Machine Parts</a>
+        <a href="exchange.html" class="nav-link">Exchange</a>
+      </div>
+      <div class="nav-right">
+        <span id="userWelcome" class="nav-user"></span>
+        <button id="logoutBtn" class="btn btn-secondary btn-small">Logout</button>
+      </div>
+    </div>
+  </nav>
+  
+  <div class="container">
+    <div class="ai-section">
+      <h2>🔧 AI Health Inspection Reports</h2>
+      <p>Get detailed condition assessments and maintenance recommendations powered by AI</p>
+    </div>
+    
+    <div class="section">
+      <h3>Generate Health Report</h3>
+      <form id="healthReportForm">
+        <div class="form-group">
+          <label for="healthItem">Select Equipment</label>
+          <select id="healthItem" required></select>
+        </div>
+        <div class="form-group">
+          <label>Upload Image (Optional)</label>
+          <div class="upload-area" id="healthUploadArea">
+            <input type="file" id="healthImage" accept="image/*">
+            <p>Click to upload image or drag and drop</p>
+            <img id="healthPreview" class="preview-image" style="display: none;">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Generate Health Report</button>
+      </form>
+    </div>
+    
+    <div id="healthResults" class="section" style="display: none;">
+      <h3>Health Report</h3>
+      <div class="result-grid">
+        <div class="result-item">
+          <h4>Overall Condition</h4>
+          <p id="overallCondition">-</p>
+        </div>
+        <div class="result-item">
+          <h4>Condition Score</h4>
+          <p id="healthConditionScore">0/100</p>
+        </div>
+        <div class="result-item">
+          <h4>Estimated Life Remaining</h4>
+          <p id="lifeRemaining">-</p>
+        </div>
+      </div>
+      <div class="mt-20">
+        <h4>Visual Inspection:</h4>
+        <p id="visualInspection"></p>
+        <h4>Functional Test:</h4>
+        <p id="functionalTest"></p>
+        <h4>Wear and Tear:</h4>
+        <p id="wearAndTear"></p>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h3>Health Report History</h3>
+      <div id="healthReportsList"></div>
+    </div>
+  </div>
+  
+  <script src="app.js"></script>
+</body>
+</html>
