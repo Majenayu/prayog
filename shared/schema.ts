@@ -209,7 +209,9 @@ export const machines = pgTable("machines", {
   industryId: text("industry_id").notNull(),
   name: text("name").notNull(),
   description: text("description").notNull(),
+  machineType: text("machine_type"), // Type of machine package (optional for backward compatibility)
   heroImage: text("hero_image"),
+  diagramCenterImageUrl: text("diagram_center_image_url"), // Center diagram image URL for visual assembly
   rentalPricePerDay: decimal("rental_price_per_day", { precision: 10, scale: 2 }),
   priceOverrideReason: text("price_override_reason"),
   status: text("status").notNull().default('available'), // 'available', 'on_rent', 'unavailable'
@@ -353,6 +355,8 @@ export const insertMachineSchema = createInsertSchema(machines).omit({
 }).extend({
   name: z.string().min(3, "Machine name must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
+  machineType: z.string().min(2, "Machine type is required").optional(),
+  diagramCenterImageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   status: z.enum(['available', 'on_rent', 'unavailable']).optional(),
 });
 

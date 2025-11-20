@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { IndustryProduct, Machine } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +30,8 @@ export default function MachineBuilder() {
   
   const [machineName, setMachineName] = useState("");
   const [machineDescription, setMachineDescription] = useState("");
+  const [machineType, setMachineType] = useState("");
+  const [diagramCenterImageUrl, setDiagramCenterImageUrl] = useState("");
   const [components, setComponents] = useState<Record<string, string>>({});
 
   const { data: products = [] } = useQuery<IndustryProduct[]>({
@@ -40,10 +43,12 @@ export default function MachineBuilder() {
   });
 
   const createMachineMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; components: any[] }) => {
+    mutationFn: async (data: { name: string; description: string; machineType: string; diagramCenterImageUrl?: string; components: any[] }) => {
       const machineResponse = await apiRequest("POST", "/api/machines", {
         name: data.name,
         description: data.description,
+        machineType: data.machineType,
+        diagramCenterImageUrl: data.diagramCenterImageUrl,
       });
       const machine = await machineResponse.json();
       
@@ -57,10 +62,12 @@ export default function MachineBuilder() {
       queryClient.invalidateQueries({ queryKey: ['/api/machines/industry/my-machines'] });
       setMachineName("");
       setMachineDescription("");
+      setMachineType("");
+      setDiagramCenterImageUrl("");
       setComponents({});
       toast({
-        title: "Machine created",
-        description: "Your custom machine has been created successfully.",
+        title: "Machine package created",
+        description: "Your custom machine package has been created successfully.",
       });
     },
     onError: (error: Error) => {
@@ -77,6 +84,15 @@ export default function MachineBuilder() {
       toast({
         title: "Missing information",
         description: "Please provide machine name and description.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (diagramCenterImageUrl && !diagramCenterImageUrl.startsWith('http')) {
+      toast({
+        title: "Invalid URL",
+        description: "Diagram image URL must start with http:// or https://",
         variant: "destructive",
       });
       return;
@@ -101,6 +117,8 @@ export default function MachineBuilder() {
     createMachineMutation.mutate({
       name: machineName,
       description: machineDescription,
+      machineType,
+      diagramCenterImageUrl: diagramCenterImageUrl || undefined,
       components: componentArray,
     });
   };
@@ -131,16 +149,26 @@ export default function MachineBuilder() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Machine Details</CardTitle>
+                <CardTitle>Machine Package Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Machine Name</Label>
+                  <Label htmlFor="machineType">Machine Type</Label>
+                  <Input
+                    id="machineType"
+                    value={machineType}
+                    onChange={(e) => setMachineType(e.target.value)}
+                    placeholder="e.g., Industrial Robot, CNC Machine"
+                    data-testid="input-machine-type"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Package Name</Label>
                   <Input
                     id="name"
                     value={machineName}
                     onChange={(e) => setMachineName(e.target.value)}
-                    placeholder="Enter machine name"
+                    placeholder="Enter package name"
                     data-testid="input-machine-name"
                   />
                 </div>
@@ -150,36 +178,55 @@ export default function MachineBuilder() {
                     id="description"
                     value={machineDescription}
                     onChange={(e) => setMachineDescription(e.target.value)}
-                    placeholder="Describe your machine"
+                    placeholder="Describe your machine package"
                     rows={3}
                     data-testid="input-machine-description"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="diagramUrl">Diagram Center Image URL (Optional)</Label>
+                  <Input
+                    id="diagramUrl"
+                    value={diagramCenterImageUrl}
+                    onChange={(e) => setDiagramCenterImageUrl(e.target.value)}
+                    placeholder="https://example.com/diagram.png"
+                    data-testid="input-diagram-url"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Add a center diagram image to show the assembled machine
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Select Components</CardTitle>
+                <CardTitle>Select Parts from Inventory</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {Object.entries(SLOT_POSITIONS).map(([slot, _]) => (
+                {[
+                  { slot: 'center', label: 'Main Machine Body (Center)' },
+                  { slot: 'head', label: 'Head' },
+                  { slot: 'left_upper', label: 'Left Arm' },
+                  { slot: 'right_upper', label: 'Right Arm' },
+                  { slot: 'left_lower', label: 'Left Leg' },
+                  { slot: 'right_lower', label: 'Right Leg' },
+                  { slot: 'auxiliary', label: 'Auxiliary Part (Optional)' },
+                ].map(({ slot, label }) => (
                   <div key={slot} className="space-y-2">
-                    <Label htmlFor={slot}>
-                      {slot.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </Label>
+                    <Label htmlFor={slot}>{label}</Label>
                     <Select
                       value={components[slot] || ""}
                       onValueChange={(value) => setComponents({ ...components, [slot]: value })}
                     >
                       <SelectTrigger id={slot} data-testid={`select-${slot}`}>
-                        <SelectValue placeholder="Select a product" />
+                        <SelectValue placeholder="Select a part from inventory" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">None</SelectItem>
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
-                            {product.name}
+                            {product.name} - ${product.pricePerDay}/day
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -203,10 +250,20 @@ export default function MachineBuilder() {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle>Machine Preview</CardTitle>
+                <CardTitle>Machine Package Preview</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="relative bg-muted/30 rounded-lg" style={{ height: '600px' }}>
+                  {diagramCenterImageUrl && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                      <img
+                        src={diagramCenterImageUrl}
+                        alt="Machine diagram"
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  )}
+                  
                   {Object.entries(components).map(([slot, productId]) => {
                     const product = products.find(p => p.id === productId);
                     if (!product) return null;
@@ -215,16 +272,16 @@ export default function MachineBuilder() {
                     return (
                       <div
                         key={slot}
-                        className="absolute"
+                        className="absolute z-10"
                         style={position}
                       >
                         <div className="flex flex-col items-center gap-2">
                           <img
                             src={product.imageUrl}
                             alt={product.name}
-                            className="w-24 h-24 object-cover rounded-md border-2 border-primary"
+                            className="w-24 h-24 object-cover rounded-md border-2 border-primary shadow-lg"
                           />
-                          <span className="text-xs font-medium bg-background px-2 py-1 rounded">
+                          <span className="text-xs font-medium bg-background px-2 py-1 rounded shadow">
                             {product.name}
                           </span>
                         </div>
@@ -232,9 +289,9 @@ export default function MachineBuilder() {
                     );
                   })}
                   
-                  {Object.keys(components).length === 0 && (
+                  {Object.keys(components).length === 0 && !diagramCenterImageUrl && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <p className="text-muted-foreground">Select components to preview</p>
+                      <p className="text-muted-foreground">Select parts to preview your machine package</p>
                     </div>
                   )}
                 </div>
@@ -244,27 +301,38 @@ export default function MachineBuilder() {
         </div>
 
         <div className="mt-8">
-          <h2 className="text-2xl font-bold mb-4">Your Machines</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {machines.map((machine) => (
-              <Card key={machine.id} className="hover-elevate">
-                <CardHeader>
-                  <CardTitle className="line-clamp-1">{machine.name}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{machine.description}</p>
-                  <Button
-                    variant="outline"
-                    className="w-full mt-4"
-                    onClick={() => setLocation(`/machines/${machine.id}`)}
-                    data-testid={`button-view-${machine.id}`}
-                  >
-                    View Details
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <h2 className="text-2xl font-bold mb-4">Your Machine Packages</h2>
+          {machines.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No machine packages yet. Create your first package above!
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {machines.map((machine) => (
+                <Card key={machine.id} className="hover-elevate">
+                  <CardHeader>
+                    <CardTitle className="line-clamp-1">{machine.name}</CardTitle>
+                    <Badge variant="secondary" className="w-fit" data-testid={`badge-type-${machine.id}`}>
+                      {machine.machineType || 'Machine Package'}
+                    </Badge>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{machine.description}</p>
+                    <Button
+                      variant="outline"
+                      className="w-full mt-4"
+                      onClick={() => setLocation(`/machines/${machine.id}`)}
+                      data-testid={`button-view-${machine.id}`}
+                    >
+                      View Package Details
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>
