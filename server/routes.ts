@@ -9,7 +9,7 @@ import { Readable } from "stream";
 import { z } from "zod";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertUserSchema, insertItemSchema, insertProductSchema, insertIndustryProductSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertItemPartSchema, insertPartRentalSchema, insertMachineSchema, insertMachineComponentSchema, cartItems, type InsertMachinePart } from "@shared/schema";
+import { insertUserSchema, insertItemSchema, insertProductSchema, insertIndustryProductSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertItemPartSchema, insertPartRentalSchema, insertMachineSchema, insertMachineComponentSchema, cartItems, rentals, trackingSessions, type InsertMachinePart } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { analyzeItemImage, generateHealthReport } from "./openai-service";
 
@@ -530,6 +530,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(rental);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to create rental" });
+    }
+  });
+
+  app.patch("/api/rentals/:id/cancel", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const rental = await db.select().from(rentals)
+        .where(eq(rentals.id, req.params.id))
+        .limit(1);
+
+      if (!rental[0]) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+
+      // Only the user who created the rental can cancel it
+      if (rental[0].userId !== req.session.userId) {
+        return res.status(403).json({ message: "Not authorized to cancel this rental" });
+      }
+
+      // Check if rental is already cancelled or completed (prevents double inventory increment)
+      if (rental[0].status === 'cancelled') {
+        return res.status(400).json({ message: "Rental is already cancelled" });
+      }
+
+      if (rental[0].status === 'completed') {
+        return res.status(400).json({ message: "Cannot cancel a completed rental" });
+      }
+
+      // Update rental status to cancelled first
+      const updatedRental = await storage.updateRental(req.params.id, { 
+        status: 'cancelled',
+        endDate: new Date()
+      });
+
+      // Only return item to inventory if status update succeeded
+      if (updatedRental) {
+        const product = await storage.getIndustryProductById(rental[0].itemId);
+        if (product) {
+          await storage.updateIndustryProduct(rental[0].itemId, {
+            availableQuantity: product.availableQuantity + 1,
+          });
+        }
+      }
+
+      res.json(updatedRental);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to cancel rental" });
     }
   });
 
@@ -1331,8 +1381,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Rental ID is required" });
       }
 
-      const rental = await db.select().from({ rentals: require("@shared/schema").rentals })
-        .where(eq(require("@shared/schema").rentals.id, rentalId))
+      const rental = await db.select().from(rentals)
+        .where(eq(rentals.id, rentalId))
         .limit(1);
 
       if (!rental[0]) {

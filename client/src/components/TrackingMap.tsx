@@ -31,7 +31,7 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
 
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
-  const [distance, setDistance] = useState<string>("");
+  const [distance, setDistance] = useState<string>("0");
   const [eta, setEta] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
@@ -274,20 +274,12 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div ref={mapContainerRef} className="h-64 w-full rounded-md" data-testid="map-container" />
+        <div ref={mapContainerRef} className="h-48 w-full rounded-md" data-testid="map-container" />
         <div className="flex gap-4 text-sm">
-          {distance && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Distance:</span>
-              <Badge variant="secondary" data-testid="text-distance">{distance} km</Badge>
-            </div>
-          )}
-          {eta > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">ETA:</span>
-              <Badge variant="secondary" data-testid="text-eta">{eta} min</Badge>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Distance:</span>
+            <Badge variant="secondary" data-testid="text-distance">{distance} km</Badge>
+          </div>
           {locationEnabled && (
             <div className="flex items-center gap-2">
               <Badge variant="default" data-testid="status-location">

@@ -76,6 +76,26 @@ export default function MyRentals() {
     },
   });
 
+  const cancelRentalMutation = useMutation({
+    mutationFn: async (rentalId: string) => {
+      return await apiRequest('PATCH', `/api/rentals/${rentalId}/cancel`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/rentals/my-rentals'] });
+      toast({
+        title: "Rental Cancelled",
+        description: "Your rental has been successfully cancelled.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel rental. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const activeRentals = rentals?.filter(r => r.status === 'active') || [];
   const pastRentals = rentals?.filter(r => r.status !== 'active') || [];
 
@@ -182,7 +202,7 @@ export default function MyRentals() {
                           </span>
                         </div>
 
-                        <div className="pt-2">
+                        <div className="pt-2 space-y-2">
                           {session ? (
                             <Button
                               size="sm"
@@ -207,6 +227,21 @@ export default function MyRentals() {
                               Start Tracking
                             </Button>
                           )}
+                          
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="w-full gap-2"
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to cancel this rental?')) {
+                                cancelRentalMutation.mutate(rental.id);
+                              }
+                            }}
+                            disabled={cancelRentalMutation.isPending}
+                            data-testid={`button-cancel-rental-${rental.id}`}
+                          >
+                            Cancel Order
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
