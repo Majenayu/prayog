@@ -211,17 +211,16 @@ export const machines = pgTable("machines", {
   description: text("description").notNull(),
   machineType: text("machine_type"), // Type of machine package (optional for backward compatibility)
   heroImage: text("hero_image"),
-  diagramCenterImageUrl: text("diagram_center_image_url"), // Center diagram image URL for visual assembly
   rentalPricePerDay: decimal("rental_price_per_day", { precision: 10, scale: 2 }),
   priceOverrideReason: text("price_override_reason"),
-  status: text("status").notNull().default('available'), // 'available', 'on_rent', 'unavailable'
+  status: text("status").notNull().default('draft'), // 'draft', 'available', 'on_rent', 'unavailable'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const machineComponents = pgTable("machine_components", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   machineId: text("machine_id").notNull(),
-  slot: text("slot").notNull(), // 'center', 'head', 'left_upper', 'right_upper', 'left_lower', 'right_lower', 'auxiliary'
+  slot: text("slot").notNull(), // 'head', 'left', 'right', 'body', 'bottom'
   industryProductId: text("industry_product_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -356,16 +355,15 @@ export const insertMachineSchema = createInsertSchema(machines).omit({
   name: z.string().min(3, "Machine name must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   machineType: z.string().min(2, "Machine type is required").optional(),
-  diagramCenterImageUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  status: z.enum(['available', 'on_rent', 'unavailable']).optional(),
+  status: z.enum(['draft', 'available', 'on_rent', 'unavailable']).optional(),
 });
 
 export const insertMachineComponentSchema = createInsertSchema(machineComponents).omit({
   id: true,
   createdAt: true,
 }).extend({
-  slot: z.enum(['center', 'head', 'left_upper', 'right_upper', 'left_lower', 'right_lower', 'auxiliary'], {
-    errorMap: () => ({ message: "Slot must be one of: center, head, left_upper, right_upper, left_lower, right_lower, auxiliary" })
+  slot: z.enum(['head', 'left', 'right', 'body', 'bottom'], {
+    errorMap: () => ({ message: "Slot must be one of: head, left, right, body, bottom" })
   }),
 });
 

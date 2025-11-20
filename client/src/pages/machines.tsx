@@ -1,26 +1,27 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { Machine, MachineWithComponents } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Settings2 } from "lucide-react";
+import { ArrowLeft, Settings2, ShoppingCart } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 const SLOT_POSITIONS = {
-  head: { top: '5%', left: '50%', transform: 'translateX(-50%)' },
-  center: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
-  left_upper: { top: '30%', left: '10%' },
-  right_upper: { top: '30%', right: '10%' },
-  left_lower: { top: '70%', left: '10%' },
-  right_lower: { top: '70%', right: '10%' },
-  auxiliary: { bottom: '5%', left: '50%', transform: 'translateX(-50%)' },
+  head: { top: '10%', left: '50%', transform: 'translateX(-50%)' },
+  body: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+  left: { top: '50%', left: '10%', transform: 'translateY(-50%)' },
+  right: { top: '50%', right: '10%', transform: 'translateY(-50%)' },
+  bottom: { bottom: '10%', left: '50%', transform: 'translateX(-50%)' },
 };
 
 export default function MachinesPage() {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute("/machines/:id");
+  const { toast } = useToast();
 
   const { data: machines = [], isLoading: machinesLoading } = useQuery<Machine[]>({
     queryKey: ['/api/machines'],
@@ -29,6 +30,53 @@ export default function MachinesPage() {
   const { data: selectedMachine, isLoading: machineLoading } = useQuery<MachineWithComponents>({
     queryKey: [`/api/machines/${params?.id}`],
     enabled: !!params?.id,
+  });
+
+  const addToCartMutation = useMutation({
+    mutationFn: async (data: { itemId: string; quantity: number; days: number }) => {
+      return await apiRequest("POST", "/api/cart/items", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      toast({
+        title: "Added to cart",
+        description: "Item has been added to your cart successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add to cart",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addWholeSetMutation = useMutation({
+    mutationFn: async (components: Array<{ product?: { id: string; [key: string]: any } }>) => {
+      const promises = components
+        .filter(c => c.product?.id)
+        .map(c => apiRequest("POST", "/api/cart/items", {
+          itemId: c.product!.id,
+          quantity: 1,
+          days: 1,
+        }));
+      return await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+      toast({
+        title: "Complete set added to cart",
+        description: "All machine components have been added to your cart.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add set to cart",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   if (match && params?.id) {
@@ -76,16 +124,6 @@ export default function MachinesPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="relative bg-muted/30 rounded-lg" style={{ height: '600px' }}>
-                    {selectedMachine.diagramCenterImageUrl && (
-                      <div className="absolute inset-0 flex items-center justify-center opacity-20">
-                        <img
-                          src={selectedMachine.diagramCenterImageUrl}
-                          alt="Machine diagram"
-                          className="max-w-full max-h-full object-contain"
-                        />
-                      </div>
-                    )}
-                    
                     {selectedMachine.components?.map((component) => {
                       const position = SLOT_POSITIONS[component.slot as keyof typeof SLOT_POSITIONS];
                       return (
@@ -103,6 +141,9 @@ export default function MachinesPage() {
                                   className="w-24 h-24 object-cover rounded-md border-2 border-primary shadow-lg"
                                   data-testid={`img-component-${component.slot}`}
                                 />
+                                <Badge variant="secondary" className="text-xs">
+                                  {component.slot.charAt(0).toUpperCase() + component.slot.slice(1)}
+                                </Badge>
                                 <span className="text-xs font-medium bg-background px-2 py-1 rounded shadow">
                                   {component.product.name}
                                 </span>
@@ -112,6 +153,11 @@ export default function MachinesPage() {
                         </div>
                       );
                     })}
+                    {(!selectedMachine.components || selectedMachine.components.length === 0) && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <p className="text-muted-foreground">No components assembled yet</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -157,49 +203,73 @@ export default function MachinesPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {selectedMachine.components?.map((component) => {
-                      const slotLabels: Record<string, string> = {
-                        center: 'Main Body',
-                        head: 'Head',
-                        left_upper: 'Left Arm',
-                        right_upper: 'Right Arm',
-                        left_lower: 'Left Leg',
-                        right_lower: 'Right Leg',
-                        auxiliary: 'Auxiliary',
-                      };
-                      
-                      return (
-                        <div key={component.id} className="flex items-center gap-3 p-2 rounded hover-elevate" data-testid={`component-${component.slot}`}>
-                          {component.product && (
-                            <>
-                              <img
-                                src={component.product.imageUrl}
-                                alt={component.product.name}
-                                className="w-12 h-12 object-cover rounded"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{component.product.name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {slotLabels[component.slot] || component.slot}
-                                </p>
-                                {component.product.pricePerDay && (
-                                  <p className="text-xs font-medium text-primary">
-                                    ${component.product.pricePerDay}/day
+                    {selectedMachine.components && selectedMachine.components.length > 0 ? (
+                      selectedMachine.components.map((component) => {
+                        const slotLabels: Record<string, string> = {
+                          head: 'Head Component',
+                          body: 'Body Component',
+                          left: 'Left Side',
+                          right: 'Right Side',
+                          bottom: 'Bottom Component',
+                        };
+                        
+                        return (
+                          <div key={component.id} className="flex items-center gap-3 p-2 rounded hover-elevate" data-testid={`component-${component.slot}`}>
+                            {component.product && (
+                              <>
+                                <img
+                                  src={component.product.imageUrl}
+                                  alt={component.product.name}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{component.product.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {slotLabels[component.slot] || component.slot}
                                   </p>
-                                )}
-                              </div>
-                              <Button variant="outline" size="sm" disabled data-testid={`button-rent-${component.id}`}>
-                                Rent Part
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
+                                  {component.product.pricePerDay && (
+                                    <p className="text-xs font-medium text-primary">
+                                      ${component.product.pricePerDay}/day
+                                    </p>
+                                  )}
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => addToCartMutation.mutate({
+                                    itemId: component.product!.id,
+                                    quantity: 1,
+                                    days: 1,
+                                  })}
+                                  disabled={addToCartMutation.isPending}
+                                  data-testid={`button-rent-${component.id}`}
+                                >
+                                  <ShoppingCart className="h-3 w-3 mr-1" />
+                                  Add to Cart
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">No components added yet</p>
+                    )}
                   </div>
-                  <Button className="w-full mt-4" disabled data-testid="button-rent-package">
-                    Rent Complete Package (Coming Soon)
-                  </Button>
+                  <div className="mt-4 space-y-2">
+                    <Button 
+                      className="w-full" 
+                      onClick={() => addWholeSetMutation.mutate(selectedMachine.components || [])}
+                      disabled={addWholeSetMutation.isPending || !selectedMachine.components || selectedMachine.components.length === 0}
+                      data-testid="button-rent-package"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      {addWholeSetMutation.isPending ? "Adding..." : "Add Complete Set to Cart"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Purchase individual parts or the entire set
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </div>

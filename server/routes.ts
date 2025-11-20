@@ -1155,7 +1155,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const cartItemsWithDetails = await Promise.all(
         cartItemsList.map(async (cartItem) => {
-          const item = await storage.getItemById(cartItem.itemId);
+          // Try to find in legacy items first, then industry products
+          let item = await storage.getItemById(cartItem.itemId);
+          if (!item) {
+            item = await storage.getIndustryProductById(cartItem.itemId);
+          }
           const subtotal = (parseFloat(cartItem.priceSnapshot) * cartItem.quantity * cartItem.days).toFixed(2);
           return {
             ...cartItem,
@@ -1189,12 +1193,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Item ID is required" });
       }
 
-      const item = await storage.getItemById(itemId);
+      // Try to find in legacy items table first
+      let item = await storage.getItemById(itemId);
+      let pricePerDay: string;
+      let availableQty: number;
+
       if (!item) {
-        return res.status(404).json({ message: "Item not found" });
+        // If not found in items, try industry products
+        const industryProduct = await storage.getIndustryProductById(itemId);
+        if (!industryProduct) {
+          return res.status(404).json({ message: "Item not found" });
+        }
+        pricePerDay = industryProduct.pricePerDay;
+        availableQty = industryProduct.availableQuantity;
+      } else {
+        pricePerDay = item.pricePerDay;
+        availableQty = item.availableQuantity;
       }
 
-      if (item.availableQuantity < quantity) {
+      if (availableQty < quantity) {
         return res.status(400).json({ message: "Insufficient quantity available" });
       }
 
@@ -1208,7 +1225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         itemId,
         quantity,
         days,
-        item.pricePerDay
+        pricePerDay
       );
 
       res.json(cartItem);
