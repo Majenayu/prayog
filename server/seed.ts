@@ -301,13 +301,102 @@ async function seedDatabase() {
 
     console.log("✅ Created sample rental");
 
+    const roboticsIndustry = await storage.createUser({
+      username: "robotics_test",
+      email: "test@robotics.com",
+      password: await bcrypt.hash("password123", 10),
+      role: "industry",
+      companyName: "Robotics Solutions Inc",
+    });
+
+    const irb1600Robot = await storage.createItem({
+      name: "ABB IRB 1600 Industrial Robot",
+      description: "6-axis industrial robot with exceptional path accuracy and reliability. Ideal for material handling, machine tending, and assembly operations. Payload capacity: 10kg, Reach: 1.45m",
+      category: "Industrial Robotics",
+      pricePerDay: "450.00",
+      quantity: 1,
+      imageUrl: "https://images.unsplash.com/photo-1563191911-e65f8655ebf9?w=800",
+      industryId: roboticsIndustry.id,
+      machineType: "IRB 1600",
+      purchaseDate: new Date("2022-01-15"),
+      warrantyExpiry: new Date("2027-01-15"),
+    });
+
+    await storage.createItemPart({
+      itemId: irb1600Robot.id,
+      partName: "Welding Torch",
+      partNumber: "WT-IRB1600-001",
+      description: "High-precision welding torch attachment with automatic wire feed system",
+      health: 95,
+      isAvailable: true,
+      positionX: 75,
+      positionY: 25,
+      imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+    });
+
+    await storage.createItemPart({
+      itemId: irb1600Robot.id,
+      partName: "Cutting Tool",
+      partNumber: "CT-IRB1600-002",
+      description: "Industrial-grade cutting tool for precision material processing",
+      health: 88,
+      isAvailable: true,
+      positionX: 65,
+      positionY: 45,
+      imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+    });
+
+    await storage.createItemPart({
+      itemId: irb1600Robot.id,
+      partName: "Magnetic Gripper",
+      partNumber: "MG-IRB1600-003",
+      description: "Electromagnetic gripper for handling ferrous materials with variable strength control",
+      health: 92,
+      isAvailable: true,
+      positionX: 55,
+      positionY: 65,
+      imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+    });
+
+    await storage.createItemPart({
+      itemId: irb1600Robot.id,
+      partName: "Vacuum Gripper",
+      partNumber: "VG-IRB1600-004",
+      description: "Multi-cup vacuum gripper system for handling non-ferrous and delicate materials",
+      health: 90,
+      isAvailable: true,
+      positionX: 45,
+      positionY: 75,
+      imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+    });
+
+    await storage.createHealthReport({
+      itemId: irb1600Robot.id,
+      overallCondition: "excellent",
+      conditionScore: 92,
+      visualInspection: "No visible damage or wear. All parts in pristine condition.",
+      functionalTest: "All 6 axes functioning perfectly. Precision within tolerance. No unusual sounds or vibrations.",
+      wearAndTear: "Minimal wear on moving parts. Regular maintenance has been performed.",
+      defects: [],
+      maintenanceHistory: [
+        { date: "2024-11-01", description: "Routine maintenance and lubrication" },
+        { date: "2024-08-15", description: "Software update and calibration" },
+        { date: "2024-05-20", description: "Full system inspection and parts replacement" }
+      ],
+      estimatedLifeRemaining: "8 years with proper maintenance",
+      inspectedBy: "Certified Robotics Technician",
+    });
+
+    console.log("✅ Created IRB 1600 robot with parts");
+
     console.log("\n🎉 Database seeding completed successfully!");
     console.log("\n📊 Sample Data Summary:");
-    console.log("   - 2 Industry users (username: acme_industrial, techforge_mfg / password: industry123)");
+    console.log("   - 3 Industry users (acme_industrial, techforge_mfg, robotics_test / password: industry123 or password123)");
     console.log("   - 2 Regular users (username: john_builder, sarah_contractor / password: user123)");
-    console.log("   - 4 Equipment items with purchase dates and warranties");
+    console.log("   - 5 Equipment items with purchase dates and warranties");
     console.log("   - 6 Machine parts with locations");
-    console.log("   - 3 Health reports with detailed inspection data");
+    console.log("   - 4 Item parts for IRB 1600 robot");
+    console.log("   - 4 Health reports with detailed inspection data");
     console.log("   - 3 AI appraisals with condition scoring");
     console.log("   - 2 Exchange offers");
     console.log("   - 1 Active rental\n");

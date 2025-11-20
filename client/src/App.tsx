@@ -11,6 +11,7 @@ import IndustryDashboard from "@/pages/industry-dashboard";
 import ExchangesPage from "@/pages/exchanges";
 import RepairsPage from "@/pages/repairs";
 import ManageMachineParts from "@/pages/manage-machine-parts";
+import PartDiagram from "@/pages/part-diagram";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: string }) {
@@ -77,6 +78,10 @@ function Router() {
       
       <Route path="/industry/machine-parts">
         <ProtectedRoute component={ManageMachineParts} allowedRole="industry" />
+      </Route>
+      
+      <Route path="/parts/:itemId">
+        <ProtectedRoute component={PartDiagram} />
       </Route>
       
       <Route component={NotFound} />
