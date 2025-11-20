@@ -13,11 +13,28 @@ import InventoryManagement from "@/components/inventory-management";
 import RevenueAnalytics from "@/components/revenue-analytics";
 import AddItemDialog from "@/components/add-item-dialog";
 import { formatCurrencyShort } from "@/lib/currency";
+import { TrackingMap } from "@/components/TrackingMap";
+
+interface TrackingSession {
+  id: string;
+  rentalId: string;
+  userId: string;
+  industryId: string;
+  itemId: string;
+  status: string;
+  userLat: string | null;
+  userLng: string | null;
+  industryLat: string | null;
+  industryLng: string | null;
+  distance: string | null;
+  estimatedTime: number | null;
+}
 
 export default function IndustryDashboard() {
   const [, setLocation] = useLocation();
   const [showAddItem, setShowAddItem] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
   const { user, logout: authLogout } = useAuth();
 
   if (!user || user.role !== 'industry') {
@@ -30,6 +47,10 @@ export default function IndustryDashboard() {
 
   const { data: rentals = [] } = useQuery<RentalWithDetails[]>({
     queryKey: ['/api/rentals/my-rentals'],
+  });
+
+  const { data: trackingSessions = [] } = useQuery<TrackingSession[]>({
+    queryKey: ['/api/tracking/industry-sessions'],
   });
 
   const handleLogout = async () => {
@@ -277,17 +298,68 @@ export default function IndustryDashboard() {
           </TabsContent>
 
           <TabsContent value="track">
-            <Card>
-              <CardHeader>
-                <CardTitle>Track Shipments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-16 text-muted-foreground">
-                  <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Tracking feature coming soon...</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Active Deliveries</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {trackingSessions.length === 0 ? (
+                    <div className="text-center py-16 text-muted-foreground">
+                      <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No active delivery tracking sessions</p>
+                      <p className="text-sm mt-2">Tracking sessions are started by customers for their active rentals</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {trackingSessions.map((session) => {
+                        const rental = rentals.find(r => r.id === session.rentalId);
+                        return (
+                          <Card key={session.id} className="hover-elevate">
+                            <CardHeader>
+                              <h3 className="font-semibold text-sm">
+                                {rental?.itemName || 'Equipment Delivery'}
+                              </h3>
+                              <p className="text-xs text-muted-foreground">
+                                Customer: {rental?.userName || 'Unknown'}
+                              </p>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              {session.distance && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">Distance:</span>
+                                  <Badge variant="secondary">{session.distance} km</Badge>
+                                </div>
+                              )}
+                              {session.estimatedTime && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">ETA:</span>
+                                  <Badge variant="secondary">{session.estimatedTime} min</Badge>
+                                </div>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="w-full gap-2"
+                                onClick={() => setSelectedTracking(session.id)}
+                                data-testid={`button-view-tracking-${session.id}`}
+                              >
+                                <MapPin className="h-4 w-4" />
+                                View on Map
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {selectedTracking && (
+                <TrackingMap sessionId={selectedTracking} isIndustry={true} />
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="notifications">

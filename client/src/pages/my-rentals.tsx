@@ -57,13 +57,9 @@ export default function MyRentals() {
 
   const startTrackingMutation = useMutation({
     mutationFn: async (rentalId: string) => {
-      return await apiRequest(`/api/tracking/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rentalId }),
-      });
+      return await apiRequest('POST', `/api/tracking/start`, { rentalId });
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/tracking/user-sessions'] });
       setSelectedTracking(data.id);
       toast({
