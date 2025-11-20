@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RentHub - Login</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-card">
+            <h1>RentHub</h1>
+            <p class="subtitle">The Future of Rental Marketplace</p>
+            
+            <div class="tabs">
+                <button class="tab active" data-role="user">User</button>
+                <button class="tab" data-role="industry">Industry</button>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+                
+                <button type="submit" class="btn-primary">Sign In</button>
+            </form>
+
+            <div class="demo-accounts">
+                <p><strong>Demo Accounts:</strong></p>
+                <p>Industry: acme_industrial / industry123</p>
+                <p>User: john_builder / user123</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/app.js"></script>
+</body>
+</html>
