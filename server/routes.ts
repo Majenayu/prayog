@@ -8,7 +8,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { Readable } from "stream";
 import { z } from "zod";
 import { storage } from "./storage";
-import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema } from "@shared/schema";
+import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema } from "@shared/schema";
 import { analyzeItemImage, generateHealthReport } from "./openai-service";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -786,6 +786,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(repair);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to update repair request" });
+    }
+  });
+
+  app.get("/api/items/:itemId/parts", async (req, res) => {
+    try {
+      const { itemId } = req.params;
+      const item = await storage.getItemById(itemId);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const parts = await storage.getItemPartsByItemId(itemId);
+      
+      const partsWithRentals = await Promise.all(
+        parts.map(async (part) => {
+          const currentRental = await storage.getActivePartRentalByPartId(part.id);
+          return {
+            ...part,
+            currentRental,
+          };
+        })
+      );
+
+      res.json(partsWithRentals);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch item parts" });
+    }
+  });
+
+  app.post("/api/items/:itemId/parts", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "industry") {
+        return res.status(403).json({ message: "Only industries can add parts" });
+      }
+
+      const { itemId } = req.params;
+      const item = await storage.getItemById(itemId);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      if (item.industryId !== req.session.userId) {
+        return res.status(403).json({ message: "Not authorized to add parts to this item" });
+      }
+
+      const validatedData = insertItemPartSchema.parse({
+        ...req.body,
+        itemId,
+      });
+
+      const part = await storage.createItemPart(validatedData);
+      res.json(part);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to create item part" });
+    }
+  });
+
+  app.post("/api/part-rentals", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { itemPartId, days, pricePerDay } = req.body;
+
+      if (!itemPartId || !days || days < 1 || !pricePerDay) {
+        return res.status(400).json({ message: "Invalid rental data" });
+      }
+
+      const part = await storage.getItemPartById(itemPartId);
+      if (!part) {
+        return res.status(404).json({ message: "Part not found" });
+      }
+
+      if (!part.isAvailable) {
+        return res.status(400).json({ message: "Part not available for rent" });
+      }
+
+      const existingRental = await storage.getActivePartRentalByPartId(itemPartId);
+      if (existingRental) {
+        return res.status(400).json({ message: "Part is already rented" });
+      }
+
+      const totalAmount = (parseFloat(pricePerDay) * days).toFixed(2);
+
+      const rental = await storage.createPartRental({
+        itemPartId,
+        userId: req.session.userId,
+        startDate: new Date(),
+        days,
+        pricePerDay,
+        totalAmount,
+      });
+
+      await storage.updateItemPart(itemPartId, {
+        isAvailable: false,
+      });
+
+      res.json(rental);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to create part rental" });
+    }
+  });
+
+  app.get("/api/part-rentals/my-rentals", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const rentals = await storage.getPartRentalsByUser(req.session.userId);
+
+      const rentalsWithDetails = await Promise.all(
+        rentals.map(async (rental) => {
+          const part = await storage.getItemPartById(rental.itemPartId);
+          if (!part) return null;
+
+          const item = await storage.getItemById(part.itemId);
+          
+          return {
+            ...rental,
+            partName: part.partName,
+            itemName: item?.name,
+            partHealth: part.health,
+          };
+        })
+      );
+
+      res.json(rentalsWithDetails.filter(r => r !== null));
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch part rentals" });
     }
   });
 

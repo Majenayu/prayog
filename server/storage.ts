@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { 
   users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals,
   type User, type InsertUser, 
@@ -318,8 +318,10 @@ export class PostgresStorage implements IStorage {
 
   async getActivePartRentalByPartId(itemPartId: string): Promise<PartRental | null> {
     const [rental] = await db.select().from(partRentals)
-      .where(eq(partRentals.itemPartId, itemPartId))
-      .where(eq(partRentals.status, 'active'))
+      .where(and(
+        eq(partRentals.itemPartId, itemPartId),
+        eq(partRentals.status, 'active')
+      ))
       .limit(1);
     return rental || null;
   }
