@@ -242,6 +242,18 @@ export const trackingSessions = pgTable("tracking_sessions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(), // User who receives the notification
+  type: text("type").notNull(), // 'order_received', 'payment_reminder', 'return_reminder', 'rental_approved', 'rental_completed', 'exchange_offer', 'system'
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  relatedId: text("related_id"), // ID of related entity (rental, order, etc.)
+  relatedType: text("related_type"), // 'rental', 'order', 'exchange', etc.
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -390,6 +402,16 @@ export const insertTrackingSessionSchema = createInsertSchema(trackingSessions).
   status: true,
 });
 
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+  isRead: true,
+}).extend({
+  type: z.enum(['order_received', 'payment_reminder', 'return_reminder', 'rental_approved', 'rental_completed', 'exchange_offer', 'system']),
+  title: z.string().min(1, "Title is required"),
+  message: z.string().min(1, "Message is required"),
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -441,6 +463,9 @@ export type MachineComponent = typeof machineComponents.$inferSelect;
 
 export type InsertTrackingSession = z.infer<typeof insertTrackingSessionSchema>;
 export type TrackingSession = typeof trackingSessions.$inferSelect;
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
 
 // Extended types for API responses
 export type ItemWithIndustry = Item & {

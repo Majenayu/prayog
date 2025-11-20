@@ -903,6 +903,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Notification Routes
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const notifications = await storage.getNotificationsByUser(req.session.userId);
+      res.json(notifications);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const notifications = await storage.getUnreadNotificationsByUser(req.session.userId);
+      res.json(notifications);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch unread notifications" });
+    }
+  });
+
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const updatedNotification = await storage.markNotificationAsRead(req.params.id, req.session.userId);
+      if (!updatedNotification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      res.json(updatedNotification);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to mark notification as read" });
+    }
+  });
+
+  app.patch("/api/notifications/read-all", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await storage.markAllNotificationsAsRead(req.session.userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.delete("/api/notifications/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const success = await storage.deleteNotification(req.params.id, req.session.userId);
+      if (!success) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to delete notification" });
+    }
+  });
+
   app.get("/api/items/:itemId/parts", async (req, res) => {
     try {
       const { itemId } = req.params;

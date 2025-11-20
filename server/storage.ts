@@ -3,7 +3,7 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc, and } from "drizzle-orm";
 import { 
-  users, items, rentals, machineParts, healthReports, appraisals, exchanges, expertContacts, itemParts, partRentals, carts, cartItems, products, industryProducts, machines, machineComponents, trackingSessions,
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges, expertContacts, itemParts, partRentals, carts, cartItems, products, industryProducts, machines, machineComponents, trackingSessions, notifications,
   type User, type InsertUser, 
   type Item, type InsertItem, 
   type Product, type InsertProduct,
@@ -21,7 +21,8 @@ import {
   type Machine, type InsertMachine,
   type MachineComponent, type InsertMachineComponent,
   type MachineWithComponents,
-  type TrackingSession, type InsertTrackingSession
+  type TrackingSession, type InsertTrackingSession,
+  type Notification, type InsertNotification
 } from "@shared/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL || "";
@@ -96,6 +97,14 @@ export interface IStorage {
   createExpertContact(contact: InsertExpertContact): Promise<ExpertContact>;
   getExpertContacts(): Promise<ExpertContact[]>;
   getExpertContactById(id: string): Promise<ExpertContact | null>;
+
+  // Notifications
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotificationsByUser(userId: string): Promise<Notification[]>;
+  getUnreadNotificationsByUser(userId: string): Promise<Notification[]>;
+  markNotificationAsRead(id: string, userId: string): Promise<Notification | null>;
+  markAllNotificationsAsRead(userId: string): Promise<boolean>;
+  deleteNotification(id: string, userId: string): Promise<boolean>;
 
   // Item Parts
   createItemPart(part: InsertItemPart): Promise<ItemPart>;
@@ -369,6 +378,44 @@ export class PostgresStorage implements IStorage {
   async getExpertContactById(id: string): Promise<ExpertContact | null> {
     const [contact] = await db.select().from(expertContacts).where(eq(expertContacts.id, id)).limit(1);
     return contact || null;
+  }
+
+  // Notifications
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async getNotificationsByUser(userId: string): Promise<Notification[]> {
+    return await db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+  }
+
+  async getUnreadNotificationsByUser(userId: string): Promise<Notification[]> {
+    return await db.select().from(notifications)
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async markNotificationAsRead(id: string, userId: string): Promise<Notification | null> {
+    const [updatedNotification] = await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .returning();
+    return updatedNotification || null;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<boolean> {
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+    return true;
+  }
+
+  async deleteNotification(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(notifications)
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .returning();
+    return result.length > 0;
   }
 
   // Item Parts

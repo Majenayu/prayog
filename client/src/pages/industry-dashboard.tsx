@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, TrendingUp, ShoppingBag, IndianRupee, Plus, LogOut, LayoutDashboard, PackageSearch, BarChart3, Bell, MapPin } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 import InventoryManagement from "@/components/inventory-management";
 import RevenueAnalytics from "@/components/revenue-analytics";
 import AddItemDialog from "@/components/add-item-dialog";
@@ -96,6 +97,7 @@ export default function IndustryDashboard() {
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Item</span>
               </Button>
+              <NotificationBell />
               <ThemeToggle />
               <Button
                 variant="ghost"

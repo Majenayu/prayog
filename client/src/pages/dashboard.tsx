@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeftRight, Phone, CheckCircle2, AlertCircle, TrendingUp, Calendar, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
 import { formatCurrency } from "@/lib/currency";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
@@ -444,6 +445,7 @@ export default function Dashboard() {
                 <ArrowLeftRight className="h-4 w-4" />
                 <span className="hidden sm:inline">Exchanges</span>
               </Button>
+              <NotificationBell />
               <ThemeToggle />
               <Button
                 variant="ghost"
