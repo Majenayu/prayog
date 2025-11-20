@@ -14,6 +14,7 @@ import ManageMachineParts from "@/pages/manage-machine-parts";
 import PartDiagram from "@/pages/part-diagram";
 import MachineBuilder from "@/pages/machine-builder";
 import MachinesPage from "@/pages/machines";
+import MyRentals from "@/pages/my-rentals";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: string }) {
@@ -64,6 +65,10 @@ function Router() {
       
       <Route path="/dashboard">
         <ProtectedRoute component={Dashboard} allowedRole="user" />
+      </Route>
+      
+      <Route path="/my-rentals">
+        <ProtectedRoute component={MyRentals} allowedRole="user" />
       </Route>
       
       <Route path="/exchanges">

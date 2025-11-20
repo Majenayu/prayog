@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { ItemWithIndustry } from "@shared/schema";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -11,8 +11,11 @@ import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeft
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { formatCurrency } from "@/lib/currency";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface FakeDialogProps {
   item: ItemWithIndustry;
@@ -216,6 +219,141 @@ function FakeAppraisalDialog({ item, open, onOpenChange }: FakeDialogProps) {
   );
 }
 
+function RentalBookingDialog({ item, open, onOpenChange }: FakeDialogProps) {
+  const [days, setDays] = useState(1);
+  const { toast } = useToast();
+
+  const totalPrice = useMemo(() => {
+    return parseFloat(item.pricePerDay) * days;
+  }, [item.pricePerDay, days]);
+
+  const createRentalMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('POST', '/api/rentals', {
+        itemId: item.id,
+        days,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/items'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rentals/my-rentals'] });
+      toast({
+        title: "Booking confirmed!",
+        description: `Successfully booked ${item.name} for ${days} day${days > 1 ? 's' : ''}.`,
+      });
+      onOpenChange(false);
+      setDays(1);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Booking failed",
+        description: error.message || "Failed to book this item. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleConfirmRental = () => {
+    if (days < 1) {
+      toast({
+        title: "Invalid duration",
+        description: "Please select at least 1 day.",
+        variant: "destructive",
+      });
+      return;
+    }
+    createRentalMutation.mutate();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Book Equipment Rental</DialogTitle>
+          <DialogDescription>Complete your rental booking for {item.name}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold truncate">{item.name}</h4>
+              <p className="text-sm text-muted-foreground truncate">{item.category}</p>
+              <p className="text-sm font-medium mt-1">
+                {formatCurrency(item.pricePerDay)}/day
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rental-days">Rental Duration (days)</Label>
+            <Input
+              id="rental-days"
+              type="number"
+              min="1"
+              step="1"
+              value={days}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') {
+                  setDays(1);
+                } else {
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue)) {
+                    setDays(Math.max(1, numValue));
+                  }
+                }
+              }}
+              disabled={createRentalMutation.isPending}
+              data-testid="input-rental-days"
+            />
+            <p className="text-xs text-muted-foreground">Minimum 1 day rental required</p>
+          </div>
+
+          <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Daily Rate</span>
+              <span className="font-medium">{formatCurrency(item.pricePerDay)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Duration</span>
+              <span className="font-medium">{days} day{days > 1 ? 's' : ''}</span>
+            </div>
+            <div className="pt-2 border-t flex justify-between">
+              <span className="font-semibold">Total Amount</span>
+              <span className="font-bold text-lg text-primary">{formatCurrency(totalPrice)}</span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={createRentalMutation.isPending}
+            data-testid="button-cancel-rental"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmRental}
+            disabled={createRentalMutation.isPending}
+            data-testid="button-confirm-rental"
+          >
+            {createRentalMutation.isPending ? "Booking..." : "Confirm Booking"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
@@ -223,6 +361,7 @@ export default function Dashboard() {
   const { user, logout: authLogout } = useAuth();
   const [healthReportOpen, setHealthReportOpen] = useState(false);
   const [appraisalOpen, setAppraisalOpen] = useState(false);
+  const [rentalDialogOpen, setRentalDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ItemWithIndustry | null>(null);
 
   const { data: items, isLoading } = useQuery<ItemWithIndustry[]>({
@@ -281,6 +420,14 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => setLocation("/my-rentals")}
+                className="gap-2"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                <span className="hidden sm:inline">My Rentals</span>
+              </Button>
               <Button 
                 variant="outline"
                 onClick={() => setLocation("/repairs")}
@@ -480,6 +627,10 @@ export default function Dashboard() {
                   <Button 
                     className="w-full" 
                     size="lg"
+                    onClick={() => {
+                      setSelectedItem(item);
+                      setRentalDialogOpen(true);
+                    }}
                     data-testid={`button-rent-${item.id}`}
                   >
                     Rent Now
@@ -491,7 +642,7 @@ export default function Dashboard() {
         )}
       </main>
 
-      {/* Fake Report Dialogs */}
+      {/* Dialogs */}
       {selectedItem && (
         <>
           <FakeHealthReportDialog 
@@ -503,6 +654,11 @@ export default function Dashboard() {
             item={selectedItem}
             open={appraisalOpen}
             onOpenChange={setAppraisalOpen}
+          />
+          <RentalBookingDialog
+            item={selectedItem}
+            open={rentalDialogOpen}
+            onOpenChange={setRentalDialogOpen}
           />
         </>
       )}
