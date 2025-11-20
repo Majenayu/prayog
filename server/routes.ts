@@ -1382,6 +1382,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/tracking/calculate-route", async (req, res) => {
+    try {
+      const { startLat, startLng, endLat, endLng } = req.body;
+      if (!startLat || !startLng || !endLat || !endLng) {
+        return res.status(400).json({ message: "Start and end coordinates are required" });
+      }
+
+      const apiKey = process.env.GRAPHHOPPER_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ message: "GraphHopper API key not configured" });
+      }
+
+      const url = `https://graphhopper.com/api/1/route?point=${startLat},${startLng}&point=${endLat},${endLng}&vehicle=car&locale=en&points_encoded=false&key=${apiKey}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      res.json(data);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to calculate route" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
