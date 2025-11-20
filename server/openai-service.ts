@@ -2,7 +2,7 @@ import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 // Using OpenAI integration blueprint - see blueprint:javascript_openai for reference
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 export interface AIAppraisalResult {
   estimatedValue: number;
@@ -40,6 +40,10 @@ export async function analyzeItemImage(
     pricePerDay: string;
   }
 ): Promise<AIAppraisalResult> {
+  if (!openai) {
+    throw new Error("OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.");
+  }
+  
   try {
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const visionResponse = await openai.chat.completions.create({
@@ -106,6 +110,10 @@ export async function generateHealthReport(
     purchaseDate?: Date;
   }
 ): Promise<AIHealthReportResult> {
+  if (!openai) {
+    throw new Error("OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.");
+  }
+  
   try {
     // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
     const visionResponse = await openai.chat.completions.create({

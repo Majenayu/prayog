@@ -3,7 +3,7 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc, and } from "drizzle-orm";
 import { 
-  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals,
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals, carts, cartItems,
   type User, type InsertUser, 
   type Item, type InsertItem, 
   type Rental, type InsertRental,
@@ -13,7 +13,9 @@ import {
   type Exchange, type InsertExchange,
   type RepairRequest, type InsertRepairRequest,
   type ItemPart, type InsertItemPart,
-  type PartRental, type InsertPartRental
+  type PartRental, type InsertPartRental,
+  type Cart, type InsertCart,
+  type CartItem, type InsertCartItem
 } from "@shared/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL || "";
@@ -90,6 +92,18 @@ export interface IStorage {
   getPartRentalsByUser(userId: string): Promise<PartRental[]>;
   getActivePartRentalByPartId(itemPartId: string): Promise<PartRental | null>;
   updatePartRental(id: string, updates: Partial<PartRental>): Promise<PartRental | null>;
+
+  // Carts
+  createCart(userId: string): Promise<Cart>;
+  getActiveCartByUserId(userId: string): Promise<Cart | null>;
+  getCartById(id: string): Promise<Cart | null>;
+  updateCartStatus(id: string, status: string): Promise<Cart | null>;
+
+  // Cart Items
+  addCartItem(cartId: string, itemId: string, quantity: number, days: number, priceSnapshot: string): Promise<CartItem>;
+  getCartItemsByCartId(cartId: string): Promise<CartItem[]>;
+  updateCartItem(id: string, updates: { quantity?: number; days?: number }): Promise<CartItem | null>;
+  deleteCartItem(id: string): Promise<boolean>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -329,6 +343,58 @@ export class PostgresStorage implements IStorage {
   async updatePartRental(id: string, updates: Partial<PartRental>): Promise<PartRental | null> {
     const [updatedRental] = await db.update(partRentals).set(updates).where(eq(partRentals.id, id)).returning();
     return updatedRental || null;
+  }
+
+  // Carts
+  async createCart(userId: string): Promise<Cart> {
+    const [newCart] = await db.insert(carts).values({ userId }).returning();
+    return newCart;
+  }
+
+  async getActiveCartByUserId(userId: string): Promise<Cart | null> {
+    const [cart] = await db.select().from(carts)
+      .where(and(
+        eq(carts.userId, userId),
+        eq(carts.status, 'active')
+      ))
+      .limit(1);
+    return cart || null;
+  }
+
+  async getCartById(id: string): Promise<Cart | null> {
+    const [cart] = await db.select().from(carts).where(eq(carts.id, id)).limit(1);
+    return cart || null;
+  }
+
+  async updateCartStatus(id: string, status: string): Promise<Cart | null> {
+    const [updatedCart] = await db.update(carts).set({ status }).where(eq(carts.id, id)).returning();
+    return updatedCart || null;
+  }
+
+  // Cart Items
+  async addCartItem(cartId: string, itemId: string, quantity: number, days: number, priceSnapshot: string): Promise<CartItem> {
+    const [newCartItem] = await db.insert(cartItems).values({
+      cartId,
+      itemId,
+      quantity,
+      days,
+      priceSnapshot,
+    }).returning();
+    return newCartItem;
+  }
+
+  async getCartItemsByCartId(cartId: string): Promise<CartItem[]> {
+    return await db.select().from(cartItems).where(eq(cartItems.cartId, cartId)).orderBy(desc(cartItems.createdAt));
+  }
+
+  async updateCartItem(id: string, updates: { quantity?: number; days?: number }): Promise<CartItem | null> {
+    const [updatedItem] = await db.update(cartItems).set(updates).where(eq(cartItems.id, id)).returning();
+    return updatedItem || null;
+  }
+
+  async deleteCartItem(id: string): Promise<boolean> {
+    const result = await db.delete(cartItems).where(eq(cartItems.id, id)).returning();
+    return result.length > 0;
   }
 }
 

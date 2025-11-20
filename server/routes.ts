@@ -8,7 +8,9 @@ import { v2 as cloudinary } from "cloudinary";
 import { Readable } from "stream";
 import { z } from "zod";
 import { storage } from "./storage";
-import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema } from "@shared/schema";
+import { db } from "./db";
+import { insertUserSchema, insertItemSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema, cartItems } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { analyzeItemImage, generateHealthReport } from "./openai-service";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -922,6 +924,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(rentalsWithDetails.filter(r => r !== null));
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to fetch part rentals" });
+    }
+  });
+
+  // Cart Routes
+  app.get("/api/cart", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      let cart = await storage.getActiveCartByUserId(req.session.userId);
+      if (!cart) {
+        cart = await storage.createCart(req.session.userId);
+      }
+
+      const cartItemsList = await storage.getCartItemsByCartId(cart.id);
+      
+      const cartItemsWithDetails = await Promise.all(
+        cartItemsList.map(async (cartItem) => {
+          const item = await storage.getItemById(cartItem.itemId);
+          const subtotal = (parseFloat(cartItem.priceSnapshot) * cartItem.quantity * cartItem.days).toFixed(2);
+          return {
+            ...cartItem,
+            item,
+            subtotal,
+          };
+        })
+      );
+
+      const totalAmount = cartItemsWithDetails.reduce((sum, item) => sum + parseFloat(item.subtotal), 0).toFixed(2);
+
+      res.json({
+        ...cart,
+        items: cartItemsWithDetails,
+        totalAmount,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch cart" });
+    }
+  });
+
+  app.post("/api/cart/items", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { itemId, quantity = 1, days = 1 } = req.body;
+
+      if (!itemId) {
+        return res.status(400).json({ message: "Item ID is required" });
+      }
+
+      const item = await storage.getItemById(itemId);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      if (item.availableQuantity < quantity) {
+        return res.status(400).json({ message: "Insufficient quantity available" });
+      }
+
+      let cart = await storage.getActiveCartByUserId(req.session.userId);
+      if (!cart) {
+        cart = await storage.createCart(req.session.userId);
+      }
+
+      const cartItem = await storage.addCartItem(
+        cart.id,
+        itemId,
+        quantity,
+        days,
+        item.pricePerDay
+      );
+
+      res.json(cartItem);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to add item to cart" });
+    }
+  });
+
+  app.patch("/api/cart/items/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { id } = req.params;
+      const { quantity, days } = req.body;
+
+      const cartItem = await db.select().from(cartItems).where(eq(cartItems.id, id)).limit(1);
+      if (!cartItem[0]) {
+        return res.status(404).json({ message: "Cart item not found" });
+      }
+
+      const cart = await storage.getCartById(cartItem[0].cartId);
+      if (!cart || cart.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized to modify this cart item" });
+      }
+
+      const updates: { quantity?: number; days?: number } = {};
+      if (quantity !== undefined) updates.quantity = quantity;
+      if (days !== undefined) updates.days = days;
+
+      const updatedItem = await storage.updateCartItem(id, updates);
+      res.json(updatedItem);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update cart item" });
+    }
+  });
+
+  app.delete("/api/cart/items/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { id } = req.params;
+      
+      const cartItem = await db.select().from(cartItems).where(eq(cartItems.id, id)).limit(1);
+      if (!cartItem[0]) {
+        return res.status(404).json({ message: "Cart item not found" });
+      }
+
+      const cart = await storage.getCartById(cartItem[0].cartId);
+      if (!cart || cart.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized to delete this cart item" });
+      }
+
+      const deleted = await storage.deleteCartItem(id);
+      res.json({ message: "Cart item removed successfully" });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to remove cart item" });
+    }
+  });
+
+  app.post("/api/cart/checkout", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const cart = await storage.getActiveCartByUserId(req.session.userId);
+      if (!cart) {
+        return res.status(404).json({ message: "Cart not found" });
+      }
+
+      if (cart.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Unauthorized to checkout this cart" });
+      }
+
+      const cartItemsList = await storage.getCartItemsByCartId(cart.id);
+      if (cartItemsList.length === 0) {
+        return res.status(400).json({ message: "Cart is empty" });
+      }
+
+      const rentals = await Promise.all(
+        cartItemsList.map(async (cartItem) => {
+          const item = await storage.getItemById(cartItem.itemId);
+          if (!item) return null;
+
+          const totalAmount = (parseFloat(cartItem.priceSnapshot) * cartItem.quantity * cartItem.days).toFixed(2);
+
+          const rental = await storage.createRental({
+            itemId: cartItem.itemId,
+            userId: req.session.userId!,
+            industryId: item.industryId,
+            startDate: new Date(),
+            days: cartItem.days,
+            totalAmount,
+          });
+
+          await storage.updateItem(item.id, {
+            availableQuantity: item.availableQuantity - cartItem.quantity,
+            status: item.availableQuantity - cartItem.quantity === 0 ? 'unavailable' : item.status,
+          });
+
+          return rental;
+        })
+      );
+
+      await storage.updateCartStatus(cart.id, 'checked_out');
+
+      res.json({
+        message: "Checkout successful",
+        rentals: rentals.filter(r => r !== null),
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Checkout failed" });
     }
   });
 
