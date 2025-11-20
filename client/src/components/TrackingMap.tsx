@@ -27,6 +27,7 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
   const industryMarkerRef = useRef<L.Marker | null>(null);
   const routePolylineRef = useRef<L.Polyline | null>(null);
   const watchIdRef = useRef<number | null>(null);
+  const lastRouteCalculationRef = useRef<{ userLat: string; userLng: string; industryLat: string; industryLng: string } | null>(null);
 
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
@@ -82,18 +83,35 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
             }
           }
 
+          // Only calculate route if both locations exist AND they've changed
           if (session.userLat && session.userLng && session.industryLat && session.industryLng) {
-            await calculateRoute(
-              [parseFloat(session.industryLat), parseFloat(session.industryLng)],
-              [parseFloat(session.userLat), parseFloat(session.userLng)]
-            );
-          }
+            const lastCalc = lastRouteCalculationRef.current;
+            const hasChanged = !lastCalc || 
+              lastCalc.userLat !== session.userLat || 
+              lastCalc.userLng !== session.userLng ||
+              lastCalc.industryLat !== session.industryLat ||
+              lastCalc.industryLng !== session.industryLng;
 
-          if (session.distance) {
-            setDistance(session.distance);
-          }
-          if (session.estimatedTime) {
-            setEta(session.estimatedTime);
+            if (hasChanged) {
+              const routeSuccess = await calculateRoute(
+                [parseFloat(session.industryLat), parseFloat(session.industryLng)],
+                [parseFloat(session.userLat), parseFloat(session.userLng)]
+              );
+              
+              // Only update the reference if route calculation succeeded
+              if (routeSuccess) {
+                lastRouteCalculationRef.current = {
+                  userLat: session.userLat,
+                  userLng: session.userLng,
+                  industryLat: session.industryLat,
+                  industryLng: session.industryLng,
+                };
+              }
+            } else if (session.distance && session.estimatedTime) {
+              // Use cached distance and ETA when positions haven't changed
+              setDistance(session.distance);
+              setEta(session.estimatedTime);
+            }
           }
         }
       } catch (error) {
@@ -104,7 +122,7 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
     return () => clearInterval(interval);
   }, [sessionId]);
 
-  const calculateRoute = async (start: [number, number], end: [number, number]) => {
+  const calculateRoute = async (start: [number, number], end: [number, number]): Promise<boolean> => {
     try {
       const response = await fetch("/api/tracking/calculate-route", {
         method: "POST",
@@ -116,6 +134,12 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
           endLng: end[1],
         }),
       });
+      
+      if (!response.ok) {
+        console.error("Route calculation failed:", response.statusText);
+        return false;
+      }
+
       const data = await response.json();
 
       if (data.paths && data.paths.length > 0) {
@@ -132,7 +156,12 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
 
         const distanceKm = (data.paths[0].distance / 1000).toFixed(1);
         const timeMin = Math.round(data.paths[0].time / 60000);
+        
+        // Update state immediately
+        setDistance(distanceKm);
+        setEta(timeMin);
 
+        // Store minimal route data (just distance and time, not the full path)
         await fetch("/api/tracking/update-route", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -140,12 +169,18 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
             sessionId,
             distance: distanceKm,
             estimatedTime: timeMin,
-            routeData: data.paths[0],
+            routeData: null, // Don't store the full GraphHopper response
           }),
         });
+        
+        return true;
       }
+      
+      console.error("No route paths found in response");
+      return false;
     } catch (error) {
       console.error("Error calculating route:", error);
+      return false;
     }
   };
 
