@@ -50,12 +50,12 @@ export default function PartDiagram() {
   const itemId = params?.itemId;
 
   const { data: item, isLoading: itemLoading } = useQuery<Item>({
-    queryKey: ["/api/items", itemId],
+    queryKey: [`/api/items/${itemId}`],
     enabled: !!itemId,
   });
 
   const { data: parts = [], isLoading: partsLoading } = useQuery<ItemPart[]>({
-    queryKey: ["/api/items", itemId, "parts"],
+    queryKey: [`/api/items/${itemId}/parts`],
     enabled: !!itemId,
   });
 
