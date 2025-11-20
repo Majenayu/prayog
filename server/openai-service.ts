@@ -30,6 +30,40 @@ export interface AIHealthReportResult {
   estimatedLifeRemaining: string;
 }
 
+export interface ExchangeAnalysisResult {
+  // Product Identification
+  productName: string;
+  productType: string;
+  manufacturer: string;
+  partNumber: string;
+  
+  // Condition Assessment (from equipment photo)
+  visualCondition: 'excellent' | 'good' | 'fair' | 'poor' | 'critical';
+  conditionScore: number; // 0-100 VCI
+  detectedIssues: string[];
+  
+  // Bill Data Extraction
+  originalPrice: number;
+  purchaseDate: string; // ISO date string
+  materialType: string;
+  
+  // Predictive Analysis
+  remainingUsefulLife: string;
+  estimatedMarketValue: number;
+  depreciationRate: number;
+  usabilityStatus: 'usable' | 'service_recommended' | 'replace_immediately';
+  
+  // Metadata
+  aiConfidence: number; // 0.00-1.00
+  analysisReport: {
+    summary: string;
+    conditionDetails: string;
+    billDataExtraction: string;
+    valueEstimationReasoning: string;
+    recommendations: string[];
+  };
+}
+
 export async function analyzeItemImage(
   base64Image: string,
   itemDetails: {
@@ -161,5 +195,121 @@ Provide a JSON response with the following structure:
     return result as AIHealthReportResult;
   } catch (error: any) {
     throw new Error(`AI health report generation failed: ${error.message}`);
+  }
+}
+
+export async function analyzeEquipmentForExchange(
+  equipmentImage: string,
+  billImage: string
+): Promise<ExchangeAnalysisResult> {
+  if (!openai) {
+    throw new Error("OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.");
+  }
+  
+  try {
+    // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+    const visionResponse = await openai.chat.completions.create({
+      model: "gpt-5",
+      messages: [
+        {
+          role: "system",
+          content: `You are a world-class industrial equipment expert combining expertise in:
+1. Machine vision and component identification (YOLO/Mask R-CNN level object detection)
+2. Condition assessment and wear analysis (ResNet/ViT level classification)
+3. OCR and document extraction (BERT-level NER)
+4. Asset valuation and depreciation modeling (XGBoost/LGBM regression)
+5. Remaining Useful Life (RUL) prediction (LSTM time series analysis)
+
+You analyze equipment photos and bills to provide comprehensive market valuation reports for industrial asset exchanges.`
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Perform a comprehensive multimodal analysis of this industrial equipment for the exchange marketplace. I'm providing two images:
+1. Equipment Photo: Analyze the component to identify it and assess its condition
+2. Bill/Invoice Photo: Extract purchase details and metadata
+
+Your analysis must include:
+
+**STEP 1: Component Detection & Identification** (from equipment photo)
+- Identify the specific type of industrial component (e.g., "Tapered Roller Bearing", "CNC Insert", "Hydraulic Valve", etc.)
+- Determine the exact product name and type
+- Visual inspection for manufacturer markings or model numbers
+
+**STEP 2: Condition Analysis** (from equipment photo)  
+- Assess visible condition: excellent, good, fair, poor, or critical
+- Calculate Visual Condition Indicator (VCI) score (0-100)
+- Detect wear patterns: corrosion, pitting, cracks, deformation, contamination, etc.
+- List all visible defects and issues
+
+**STEP 3: Bill Data Extraction** (from bill/invoice photo)
+- Extract: Part Number, Manufacturer, Original Price (USD), Purchase Date
+- Identify material type and specifications
+- Any warranty or certification details
+
+**STEP 4: Predictive Analysis** (combining both)
+- Calculate age from purchase date
+- Estimate Remaining Useful Life (RUL) based on: age, condition, typical component lifespan
+- Predict current market value using depreciation model considering:
+  * Original price
+  * Age factor
+  * Condition factor (VCI score)
+  * Market demand for this component type
+  * Usability status
+- Calculate depreciation rate
+- Determine usability: usable, service_recommended, or replace_immediately
+
+Provide your analysis in this exact JSON structure:
+{
+  "productName": "Full product name",
+  "productType": "Component category (e.g., 'Tapered Roller Bearing')",
+  "manufacturer": "Brand/manufacturer name",
+  "partNumber": "Part/model number from bill",
+  "visualCondition": "excellent" | "good" | "fair" | "poor" | "critical",
+  "conditionScore": number (0-100 VCI score),
+  "detectedIssues": ["issue 1", "issue 2"],
+  "originalPrice": number (USD from bill),
+  "purchaseDate": "YYYY-MM-DD" (from bill),
+  "materialType": "Material composition",
+  "remainingUsefulLife": "X years" or "X hours",
+  "estimatedMarketValue": number (current USD value),
+  "depreciationRate": number (percentage, e.g., 35.5 for 35.5%),
+  "usabilityStatus": "usable" | "service_recommended" | "replace_immediately",
+  "aiConfidence": number (0.00-1.00),
+  "analysisReport": {
+    "summary": "Brief 2-3 sentence overview",
+    "conditionDetails": "Detailed condition assessment",
+    "billDataExtraction": "What was extracted from the bill",
+    "valueEstimationReasoning": "How the market value was calculated",
+    "recommendations": ["recommendation 1", "recommendation 2"]
+  }
+}`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${equipmentImage}`,
+                detail: "high"
+              }
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${billImage}`,
+                detail: "high"
+              }
+            }
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const result = JSON.parse(visionResponse.choices[0].message.content || '{}');
+    return result as ExchangeAnalysisResult;
+  } catch (error: any) {
+    throw new Error(`AI exchange analysis failed: ${error.message}`);
   }
 }

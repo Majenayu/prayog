@@ -164,7 +164,7 @@ export const appraisals = pgTable("appraisals", {
 
 export const exchanges = pgTable("exchanges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  offeredItemId: text("offered_item_id").notNull(), // Item being offered
+  offeredItemId: text("offered_item_id"), // Item being offered (optional if creating new listing from AI)
   requestedItemId: text("requested_item_id"), // Item requested in exchange (null if cash)
   offererId: text("offerer_id").notNull(), // User making the offer
   receiverId: text("receiver_id"), // User receiving the offer
@@ -172,6 +172,39 @@ export const exchanges = pgTable("exchanges", {
   cashAmount: decimal("cash_amount", { precision: 10, scale: 2 }), // Cash involved
   status: text("status").notNull().default('pending'), // 'pending', 'accepted', 'rejected', 'completed'
   notes: text("notes"),
+  
+  // AI-Powered Analysis Fields
+  equipmentImageUrl: text("equipment_image_url"), // Photo of the equipment
+  equipmentImagePublicId: text("equipment_image_public_id"),
+  billImageUrl: text("bill_image_url"), // Photo of the bill/invoice
+  billImagePublicId: text("bill_image_public_id"),
+  
+  // AI Analysis Results
+  productName: text("product_name"), // Identified product name
+  productType: text("product_type"), // Type of equipment (e.g., "Tapered Roller Bearing", "CNC Insert")
+  manufacturer: text("manufacturer"), // Extracted from bill
+  partNumber: text("part_number"), // Part number from bill
+  
+  // Condition Assessment
+  visualCondition: text("visual_condition"), // 'excellent', 'good', 'fair', 'poor', 'critical'
+  conditionScore: integer("condition_score"), // 0-100 Visual Condition Indicator (VCI)
+  detectedIssues: json("detected_issues").$type<string[]>(), // List of issues (wear, corrosion, cracks, etc.)
+  
+  // Bill Data Extraction
+  originalPrice: decimal("original_price", { precision: 10, scale: 2 }), // Purchase price from bill
+  purchaseDate: timestamp("purchase_date"), // Date from bill
+  materialType: text("material_type"), // Material composition
+  
+  // Predictive Analysis
+  remainingUsefulLife: text("remaining_useful_life"), // e.g., "2 years", "500 hours"
+  estimatedMarketValue: decimal("estimated_market_value", { precision: 10, scale: 2 }), // AI-predicted current value
+  depreciationRate: decimal("depreciation_rate", { precision: 5, scale: 2 }), // Percentage
+  usabilityStatus: text("usability_status"), // 'usable', 'service_recommended', 'replace_immediately'
+  
+  // ML Metadata
+  aiConfidence: decimal("ai_confidence", { precision: 3, scale: 2 }), // 0.00-1.00
+  analysisReport: json("analysis_report").$type<any>(), // Full AI analysis report
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -348,6 +381,11 @@ export const insertExchangeSchema = createInsertSchema(exchanges).omit({
   createdAt: true,
   updatedAt: true,
   status: true,
+}).extend({
+  exchangeType: z.enum(['item_for_item', 'item_for_cash', 'both']),
+  offererId: z.string().min(1, "Offerer ID is required"),
+  equipmentImageUrl: z.string().url().optional(),
+  billImageUrl: z.string().url().optional(),
 });
 
 export const insertExpertContactSchema = createInsertSchema(expertContacts).omit({

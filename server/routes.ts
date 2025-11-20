@@ -11,7 +11,7 @@ import { storage } from "./storage";
 import { db } from "./db";
 import { insertUserSchema, insertItemSchema, insertProductSchema, insertIndustryProductSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertItemPartSchema, insertPartRentalSchema, insertMachineSchema, insertMachineComponentSchema, cartItems, rentals, trackingSessions, type InsertMachinePart } from "@shared/schema";
 import { eq } from "drizzle-orm";
-import { analyzeItemImage, generateHealthReport } from "./openai-service";
+import { analyzeItemImage, generateHealthReport, analyzeEquipmentForExchange } from "./openai-service";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -940,6 +940,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(exchange);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to update exchange" });
+    }
+  });
+
+  // AI-Powered Exchange Analysis Route
+  app.post("/api/exchanges/ai-analyze", upload.fields([
+    { name: 'equipmentImage', maxCount: 1 },
+    { name: 'billImage', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      
+      if (!files.equipmentImage || !files.billImage) {
+        return res.status(400).json({ 
+          message: "Both equipment photo and bill photo are required" 
+        });
+      }
+
+      const equipmentFile = files.equipmentImage[0];
+      const billFile = files.billImage[0];
+
+      // Upload both images to Cloudinary
+      console.log("Uploading images to Cloudinary...");
+      const [equipmentUpload, billUpload] = await Promise.all([
+        uploadToCloudinary(equipmentFile.buffer, "exchange-equipment"),
+        uploadToCloudinary(billFile.buffer, "exchange-bills")
+      ]);
+
+      // Convert images to base64 for OpenAI
+      const equipmentBase64 = equipmentFile.buffer.toString('base64');
+      const billBase64 = billFile.buffer.toString('base64');
+
+      // Perform AI analysis
+      console.log("Running AI analysis...");
+      const aiResult = await analyzeEquipmentForExchange(
+        equipmentBase64,
+        billBase64
+      );
+
+      // Parse the purchase date
+      const purchaseDate = aiResult.purchaseDate ? new Date(aiResult.purchaseDate) : undefined;
+
+      // Create the exchange listing with AI analysis data
+      const exchange = await storage.createExchange({
+        offererId: req.session.userId,
+        exchangeType: 'item_for_cash', // Default to cash exchange
+        
+        // Image URLs
+        equipmentImageUrl: equipmentUpload.url,
+        equipmentImagePublicId: equipmentUpload.publicId,
+        billImageUrl: billUpload.url,
+        billImagePublicId: billUpload.publicId,
+        
+        // AI Analysis Results
+        productName: aiResult.productName,
+        productType: aiResult.productType,
+        manufacturer: aiResult.manufacturer,
+        partNumber: aiResult.partNumber,
+        
+        // Condition Assessment
+        visualCondition: aiResult.visualCondition,
+        conditionScore: aiResult.conditionScore,
+        detectedIssues: aiResult.detectedIssues,
+        
+        // Bill Data
+        originalPrice: aiResult.originalPrice.toString(),
+        purchaseDate: purchaseDate,
+        materialType: aiResult.materialType,
+        
+        // Predictive Analysis
+        remainingUsefulLife: aiResult.remainingUsefulLife,
+        estimatedMarketValue: aiResult.estimatedMarketValue.toString(),
+        depreciationRate: aiResult.depreciationRate.toString(),
+        usabilityStatus: aiResult.usabilityStatus,
+        cashAmount: aiResult.estimatedMarketValue.toString(),
+        
+        // ML Metadata
+        aiConfidence: aiResult.aiConfidence.toString(),
+        analysisReport: aiResult.analysisReport,
+      });
+
+      res.json({
+        exchange,
+        aiAnalysis: aiResult
+      });
+    } catch (error: any) {
+      console.error("AI exchange analysis error:", error);
+      if (error.message?.includes('AI exchange analysis failed')) {
+        res.status(502).json({ message: "AI service is temporarily unavailable. Please try again later." });
+      } else {
+        res.status(500).json({ message: error.message || "Failed to analyze equipment" });
+      }
     }
   });
 
