@@ -221,6 +221,27 @@ export const machineComponents = pgTable("machine_components", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Tracking tables for live delivery tracking
+export const trackingSessions = pgTable("tracking_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rentalId: text("rental_id").notNull(), // Reference to the rental being tracked
+  userId: text("user_id").notNull(), // Customer receiving the item
+  industryId: text("industry_id").notNull(), // Industry delivering the item
+  itemId: text("item_id").notNull(),
+  status: text("status").notNull().default('active'), // 'active', 'completed', 'cancelled'
+  userLat: decimal("user_lat", { precision: 10, scale: 7 }),
+  userLng: decimal("user_lng", { precision: 10, scale: 7 }),
+  industryLat: decimal("industry_lat", { precision: 10, scale: 7 }),
+  industryLng: decimal("industry_lng", { precision: 10, scale: 7 }),
+  distance: decimal("distance", { precision: 10, scale: 2 }), // Distance in km
+  estimatedTime: integer("estimated_time"), // ETA in minutes
+  routeData: json("route_data").$type<any>(), // GraphHopper route data
+  userLastUpdate: timestamp("user_last_update"),
+  industryLastUpdate: timestamp("industry_last_update"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -362,6 +383,13 @@ export const insertMachineComponentSchema = createInsertSchema(machineComponents
   }),
 });
 
+export const insertTrackingSessionSchema = createInsertSchema(trackingSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -410,6 +438,9 @@ export type Machine = typeof machines.$inferSelect;
 
 export type InsertMachineComponent = z.infer<typeof insertMachineComponentSchema>;
 export type MachineComponent = typeof machineComponents.$inferSelect;
+
+export type InsertTrackingSession = z.infer<typeof insertTrackingSessionSchema>;
+export type TrackingSession = typeof trackingSessions.$inferSelect;
 
 // Extended types for API responses
 export type ItemWithIndustry = Item & {
@@ -461,4 +492,10 @@ export type MachineWithComponents = Machine & {
 
 export type MachineComponentWithProduct = MachineComponent & {
   product?: IndustryProduct;
+};
+
+export type TrackingSessionWithDetails = TrackingSession & {
+  itemName?: string;
+  userName?: string;
+  industryName?: string;
 };

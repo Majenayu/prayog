@@ -3,7 +3,7 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc, and } from "drizzle-orm";
 import { 
-  users, items, rentals, machineParts, healthReports, appraisals, exchanges, expertContacts, itemParts, partRentals, carts, cartItems, products, industryProducts, machines, machineComponents,
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges, expertContacts, itemParts, partRentals, carts, cartItems, products, industryProducts, machines, machineComponents, trackingSessions,
   type User, type InsertUser, 
   type Item, type InsertItem, 
   type Product, type InsertProduct,
@@ -20,7 +20,8 @@ import {
   type CartItem, type InsertCartItem,
   type Machine, type InsertMachine,
   type MachineComponent, type InsertMachineComponent,
-  type MachineWithComponents
+  type MachineWithComponents,
+  type TrackingSession, type InsertTrackingSession
 } from "@shared/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL || "";
@@ -134,6 +135,13 @@ export interface IStorage {
   getMachineComponentsByMachineId(machineId: string): Promise<MachineComponent[]>;
   deleteMachineComponent(id: string): Promise<boolean>;
   deleteMachineComponentsByMachineId(machineId: string): Promise<boolean>;
+
+  // Tracking Sessions
+  createTrackingSession(rentalId: string, userId: string, industryId: string, itemId: string): Promise<TrackingSession>;
+  getTrackingSessionByRentalId(rentalId: string): Promise<TrackingSession | null>;
+  getActiveTrackingSessionsByUserId(userId: string): Promise<TrackingSession[]>;
+  getActiveTrackingSessionsByIndustryId(industryId: string): Promise<TrackingSession[]>;
+  updateTrackingSession(id: string, updates: Partial<TrackingSession>): Promise<TrackingSession | null>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -538,6 +546,53 @@ export class PostgresStorage implements IStorage {
       .where(eq(machineComponents.machineId, machineId))
       .returning();
     return result.length > 0;
+  }
+
+  // Tracking Sessions
+  async createTrackingSession(rentalId: string, userId: string, industryId: string, itemId: string): Promise<TrackingSession> {
+    const [session] = await db.insert(trackingSessions).values({
+      rentalId,
+      userId,
+      industryId,
+      itemId,
+    }).returning();
+    return session;
+  }
+
+  async getTrackingSessionByRentalId(rentalId: string): Promise<TrackingSession | null> {
+    const [session] = await db.select().from(trackingSessions)
+      .where(and(
+        eq(trackingSessions.rentalId, rentalId),
+        eq(trackingSessions.status, 'active')
+      ))
+      .limit(1);
+    return session || null;
+  }
+
+  async getActiveTrackingSessionsByUserId(userId: string): Promise<TrackingSession[]> {
+    return await db.select().from(trackingSessions)
+      .where(and(
+        eq(trackingSessions.userId, userId),
+        eq(trackingSessions.status, 'active')
+      ))
+      .orderBy(desc(trackingSessions.createdAt));
+  }
+
+  async getActiveTrackingSessionsByIndustryId(industryId: string): Promise<TrackingSession[]> {
+    return await db.select().from(trackingSessions)
+      .where(and(
+        eq(trackingSessions.industryId, industryId),
+        eq(trackingSessions.status, 'active')
+      ))
+      .orderBy(desc(trackingSessions.createdAt));
+  }
+
+  async updateTrackingSession(id: string, updates: Partial<TrackingSession>): Promise<TrackingSession | null> {
+    const [updated] = await db.update(trackingSessions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(trackingSessions.id, id))
+      .returning();
+    return updated || null;
   }
 }
 
