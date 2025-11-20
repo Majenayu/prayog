@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Package, TrendingUp, ShoppingBag, IndianRupee, Plus, LogOut, LayoutDashboard, PackageSearch, BarChart3, Wrench } from "lucide-react";
+import { Package, TrendingUp, ShoppingBag, IndianRupee, Plus, LogOut, LayoutDashboard, PackageSearch, BarChart3, Bell, MapPin } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import InventoryManagement from "@/components/inventory-management";
@@ -67,15 +67,6 @@ export default function IndustryDashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setLocation("/industry/machine-parts")}
-                className="gap-2"
-                data-testid="button-manage-parts"
-              >
-                <Wrench className="h-4 w-4" />
-                <span className="hidden sm:inline">Machine Parts</span>
-              </Button>
               <Button
                 onClick={() => setShowAddItem(true)}
                 className="gap-2"
@@ -174,7 +165,7 @@ export default function IndustryDashboard() {
 
         {/* Tabs Section */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -186,6 +177,14 @@ export default function IndustryDashboard() {
             <TabsTrigger value="revenue" className="gap-2" data-testid="tab-revenue">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Revenue</span>
+            </TabsTrigger>
+            <TabsTrigger value="track" className="gap-2" data-testid="tab-track">
+              <MapPin className="h-4 w-4" />
+              <span className="hidden sm:inline">Track</span>
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-2" data-testid="tab-notifications">
+              <Bell className="h-4 w-4" />
+              <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
           </TabsList>
 
@@ -275,6 +274,99 @@ export default function IndustryDashboard() {
 
           <TabsContent value="revenue">
             <RevenueAnalytics rentals={rentals} items={items} />
+          </TabsContent>
+
+          <TabsContent value="track">
+            <Card>
+              <CardHeader>
+                <CardTitle>Track Shipments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-16 text-muted-foreground">
+                  <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Tracking feature coming soon...</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle>Activity Notifications</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {rentals.length === 0 && items.length === 0 ? (
+                    <div className="text-center py-16 text-muted-foreground">
+                      <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No activity yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {[...items.map(item => ({
+                        type: 'item_added',
+                        message: `Item "${item.name}" was added to inventory`,
+                        timestamp: item.createdAt || new Date().toISOString(),
+                        icon: Package
+                      })),
+                      ...rentals.map(rental => {
+                        const endDate = rental.endDate ? new Date(rental.endDate) : null;
+                        const daysUntilReturn = endDate ? Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+                        return [
+                          {
+                            type: 'order_received',
+                            message: `${rental.userName} ordered "${rental.itemName}"`,
+                            timestamp: rental.createdAt || new Date().toISOString(),
+                            icon: ShoppingBag
+                          },
+                          ...(rental.status === 'active' && endDate && daysUntilReturn <= 3 && daysUntilReturn > 0 ? [{
+                            type: 'return_reminder',
+                            message: `"${rental.itemName}" return due in ${daysUntilReturn} day${daysUntilReturn !== 1 ? 's' : ''}`,
+                            timestamp: rental.endDate || new Date().toISOString(),
+                            icon: TrendingUp
+                          }] : []),
+                          ...(rental.status === 'completed' ? [{
+                            type: 'item_returned',
+                            message: `"${rental.itemName}" was returned by ${rental.userName}`,
+                            timestamp: rental.endDate || new Date().toISOString(),
+                            icon: Package
+                          }] : [])
+                        ];
+                      }).flat()]
+                        .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
+                        .slice(0, 20)
+                        .map((notification, index) => {
+                          const Icon = notification.icon;
+                          const timeAgo = notification.timestamp ? 
+                            new Date(notification.timestamp).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : 'Recently';
+                          
+                          return (
+                            <div 
+                              key={index}
+                              className="flex items-start gap-4 p-4 rounded-lg bg-muted/50 hover-elevate"
+                              data-testid={`notification-${notification.type}-${index}`}
+                            >
+                              <div className="mt-1 p-2 rounded-lg bg-primary/10">
+                                <Icon className="h-4 w-4 text-primary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm">{notification.message}</p>
+                                <p className="text-xs text-muted-foreground mt-1">{timeAgo}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
