@@ -26,6 +26,8 @@ export const items = pgTable("items", {
   imagePublicId: text("image_public_id"),
   status: text("status").notNull().default('available'), // 'available', 'on_rent', 'unavailable'
   machineType: text("machine_type"), // Type of machine if this is a machine
+  parentItemId: text("parent_item_id"), // If this is a part, reference to the main machine
+  partPosition: text("part_position"), // Position: 'top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right'
   purchaseDate: timestamp("purchase_date"), // When item was purchased
   warrantyExpiry: timestamp("warranty_expiry"), // When warranty expires
   createdAt: timestamp("created_at").defaultNow(),
