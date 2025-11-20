@@ -9,7 +9,7 @@ import { Readable } from "stream";
 import { z } from "zod";
 import { storage } from "./storage";
 import { db } from "./db";
-import { insertUserSchema, insertItemSchema, insertProductSchema, insertIndustryProductSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema, cartItems, type InsertMachinePart } from "@shared/schema";
+import { insertUserSchema, insertItemSchema, insertProductSchema, insertIndustryProductSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertRepairRequestSchema, insertItemPartSchema, insertPartRentalSchema, insertMachineSchema, insertMachineComponentSchema, cartItems, type InsertMachinePart } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { analyzeItemImage, generateHealthReport } from "./openai-service";
 
@@ -303,6 +303,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Item deleted successfully" });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to delete item" });
+    }
+  });
+
+  // Machine Routes
+  app.get("/api/machines", async (req, res) => {
+    try {
+      const machines = await storage.getMachines();
+      res.json(machines);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch machines" });
+    }
+  });
+
+  app.get("/api/machines/:id", async (req, res) => {
+    try {
+      const machine = await storage.getMachineById(req.params.id);
+      if (!machine) {
+        return res.status(404).json({ message: "Machine not found" });
+      }
+      res.json(machine);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch machine" });
+    }
+  });
+
+  app.get("/api/machines/industry/my-machines", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "industry") {
+        return res.status(403).json({ message: "Only industries can access this endpoint" });
+      }
+
+      const machines = await storage.getMachinesByIndustry(req.session.userId);
+      res.json(machines);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch machines" });
+    }
+  });
+
+  app.post("/api/machines", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "industry") {
+        return res.status(403).json({ message: "Only industries can create machines" });
+      }
+
+      const validatedData = insertMachineSchema.parse({
+        ...req.body,
+        industryId: req.session.userId,
+      });
+
+      const machine = await storage.createMachine(validatedData);
+      res.json(machine);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to create machine" });
+    }
+  });
+
+  app.patch("/api/machines/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const machine = await storage.getMachineById(req.params.id);
+      if (!machine) {
+        return res.status(404).json({ message: "Machine not found" });
+      }
+
+      if (machine.industryId !== req.session.userId) {
+        return res.status(403).json({ message: "Not authorized to update this machine" });
+      }
+
+      const updatedMachine = await storage.updateMachine(req.params.id, req.body);
+      res.json(updatedMachine);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update machine" });
+    }
+  });
+
+  app.post("/api/machines/:id/components", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const machine = await storage.getMachineById(req.params.id);
+      if (!machine) {
+        return res.status(404).json({ message: "Machine not found" });
+      }
+
+      if (machine.industryId !== req.session.userId) {
+        return res.status(403).json({ message: "Not authorized to modify this machine" });
+      }
+
+      const { components } = req.body;
+      if (!Array.isArray(components)) {
+        return res.status(400).json({ message: "Components must be an array" });
+      }
+
+      await storage.deleteMachineComponentsByMachineId(req.params.id);
+
+      const createdComponents = await Promise.all(
+        components.map((component: any) => {
+          const validatedComponent = insertMachineComponentSchema.parse({
+            machineId: req.params.id,
+            slot: component.slot,
+            industryProductId: component.industryProductId,
+          });
+          return storage.addMachineComponent(validatedComponent);
+        })
+      );
+
+      res.json({ message: "Components updated successfully", components: createdComponents });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update machine components" });
+    }
+  });
+
+  app.delete("/api/machines/:id", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const machine = await storage.getMachineById(req.params.id);
+      if (!machine) {
+        return res.status(404).json({ message: "Machine not found" });
+      }
+
+      if (machine.industryId !== req.session.userId) {
+        return res.status(403).json({ message: "Not authorized to delete this machine" });
+      }
+
+      await storage.deleteMachine(req.params.id);
+      res.json({ message: "Machine deleted successfully" });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to delete machine" });
     }
   });
 
