@@ -1245,6 +1245,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Tracking Routes
+  app.post("/api/tracking/start", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { rentalId } = req.body;
+      if (!rentalId) {
+        return res.status(400).json({ message: "Rental ID is required" });
+      }
+
+      const rental = await db.select().from({ rentals: require("@shared/schema").rentals })
+        .where(eq(require("@shared/schema").rentals.id, rentalId))
+        .limit(1);
+
+      if (!rental[0]) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+
+      const existingSession = await storage.getTrackingSessionByRentalId(rentalId);
+      if (existingSession) {
+        return res.json(existingSession);
+      }
+
+      const session = await storage.createTrackingSession(
+        rentalId,
+        rental[0].userId,
+        rental[0].industryId,
+        rental[0].itemId
+      );
+
+      res.json(session);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to start tracking" });
+    }
+  });
+
+  app.post("/api/tracking/update-location", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { sessionId, latitude, longitude, isIndustry } = req.body;
+      if (!sessionId || latitude === undefined || longitude === undefined) {
+        return res.status(400).json({ message: "Session ID, latitude, and longitude are required" });
+      }
+
+      const session = await db.select().from(trackingSessions)
+        .where(eq(trackingSessions.id, sessionId))
+        .limit(1);
+
+      if (!session[0]) {
+        return res.status(404).json({ message: "Tracking session not found" });
+      }
+
+      const updates: any = {};
+      if (isIndustry) {
+        updates.industryLat = latitude.toString();
+        updates.industryLng = longitude.toString();
+        updates.industryLastUpdate = new Date();
+      } else {
+        updates.userLat = latitude.toString();
+        updates.userLng = longitude.toString();
+        updates.userLastUpdate = new Date();
+      }
+
+      const updatedSession = await storage.updateTrackingSession(sessionId, updates);
+      res.json(updatedSession);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update location" });
+    }
+  });
+
+  app.post("/api/tracking/update-route", async (req, res) => {
+    try {
+      const { sessionId, distance, estimatedTime, routeData } = req.body;
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID is required" });
+      }
+
+      const updatedSession = await storage.updateTrackingSession(sessionId, {
+        distance: distance ? distance.toString() : undefined,
+        estimatedTime,
+        routeData,
+      });
+
+      res.json(updatedSession);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update route" });
+    }
+  });
+
+  app.get("/api/tracking/session/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const [session] = await db.select().from(trackingSessions)
+        .where(eq(trackingSessions.id, sessionId))
+        .limit(1);
+
+      if (!session) {
+        return res.status(404).json({ message: "Tracking session not found" });
+      }
+
+      res.json(session);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to get tracking session" });
+    }
+  });
+
+  app.get("/api/tracking/user-sessions", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const sessions = await storage.getActiveTrackingSessionsByUserId(req.session.userId);
+      res.json(sessions);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to get tracking sessions" });
+    }
+  });
+
+  app.get("/api/tracking/industry-sessions", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const sessions = await storage.getActiveTrackingSessionsByIndustryId(req.session.userId);
+      res.json(sessions);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to get tracking sessions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
