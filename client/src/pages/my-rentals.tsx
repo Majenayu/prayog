@@ -1,11 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, Calendar, IndianRupee, ArrowLeft } from "lucide-react";
+import { Package, Calendar, ArrowLeft, MapPin } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
+import { TrackingMap } from "@/components/TrackingMap";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface Rental {
   id: string;
@@ -23,11 +27,57 @@ interface Rental {
   imageUrl?: string;
 }
 
+interface TrackingSession {
+  id: string;
+  rentalId: string;
+  userId: string;
+  industryId: string;
+  itemId: string;
+  status: string;
+  userLat: string | null;
+  userLng: string | null;
+  industryLat: string | null;
+  industryLng: string | null;
+  distance: string | null;
+  estimatedTime: number | null;
+}
+
 export default function MyRentals() {
   const [, setLocation] = useLocation();
+  const [selectedTracking, setSelectedTracking] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const { data: rentals, isLoading } = useQuery<Rental[]>({
     queryKey: ['/api/rentals/my-rentals'],
+  });
+
+  const { data: trackingSessions } = useQuery<TrackingSession[]>({
+    queryKey: ['/api/tracking/user-sessions'],
+  });
+
+  const startTrackingMutation = useMutation({
+    mutationFn: async (rentalId: string) => {
+      return await apiRequest(`/api/tracking/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rentalId }),
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tracking/user-sessions'] });
+      setSelectedTracking(data.id);
+      toast({
+        title: "Tracking Started",
+        description: "Live tracking has been enabled for this rental.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to start tracking. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const activeRentals = rentals?.filter(r => r.status === 'active') || [];
@@ -90,51 +140,89 @@ export default function MyRentals() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeRentals.map((rental) => (
-                <Card key={rental.id} className="overflow-hidden" data-testid={`card-rental-${rental.id}`}>
-                  {rental.imageUrl && (
-                    <div className="relative aspect-video overflow-hidden bg-muted">
-                      <img
-                        src={rental.imageUrl}
-                        alt={rental.itemName || 'Rental item'}
-                        className="w-full h-full object-cover"
-                      />
-                      <Badge className="absolute top-3 right-3 bg-green-500 text-white border-0">
-                        Active
-                      </Badge>
-                    </div>
-                  )}
-                  
-                  <CardHeader>
-                    <h3 className="font-semibold text-lg" data-testid={`text-rental-name-${rental.id}`}>
-                      {rental.itemName || 'Equipment'}
-                    </h3>
-                  </CardHeader>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {activeRentals.map((rental) => {
+                  const session = trackingSessions?.find(s => s.rentalId === rental.id);
+                  return (
+                    <Card key={rental.id} className="overflow-hidden" data-testid={`card-rental-${rental.id}`}>
+                      {rental.imageUrl && (
+                        <div className="relative aspect-video overflow-hidden bg-muted">
+                          <img
+                            src={rental.imageUrl}
+                            alt={rental.itemName || 'Rental item'}
+                            className="w-full h-full object-cover"
+                          />
+                          <Badge className="absolute top-3 right-3 bg-green-500 text-white border-0">
+                            Active
+                          </Badge>
+                        </div>
+                      )}
+                      
+                      <CardHeader>
+                        <h3 className="font-semibold text-lg" data-testid={`text-rental-name-${rental.id}`}>
+                          {rental.itemName || 'Equipment'}
+                        </h3>
+                      </CardHeader>
 
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        {new Date(rental.startDate).toLocaleDateString()} - 
-                        {rental.endDate ? new Date(rental.endDate).toLocaleDateString() : 'Ongoing'}
-                      </span>
-                    </div>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>
+                            {new Date(rental.startDate).toLocaleDateString()} - 
+                            {rental.endDate ? new Date(rental.endDate).toLocaleDateString() : 'Ongoing'}
+                          </span>
+                        </div>
 
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Package className="h-4 w-4" />
-                      <span>{rental.days} day{rental.days > 1 ? 's' : ''}</span>
-                    </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Package className="h-4 w-4" />
+                          <span>{rental.days} day{rental.days > 1 ? 's' : ''}</span>
+                        </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      <span className="text-sm text-muted-foreground">Total Amount</span>
-                      <span className="text-lg font-bold text-primary">
-                        {formatCurrency(rental.totalAmount)}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        <div className="flex items-center justify-between pt-2 border-t">
+                          <span className="text-sm text-muted-foreground">Total Amount</span>
+                          <span className="text-lg font-bold text-primary">
+                            {formatCurrency(rental.totalAmount)}
+                          </span>
+                        </div>
+
+                        <div className="pt-2">
+                          {session ? (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="w-full gap-2"
+                              onClick={() => setSelectedTracking(session.id)}
+                              data-testid={`button-view-tracking-${rental.id}`}
+                            >
+                              <MapPin className="h-4 w-4" />
+                              View Live Tracking
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full gap-2"
+                              onClick={() => startTrackingMutation.mutate(rental.id)}
+                              disabled={startTrackingMutation.isPending}
+                              data-testid={`button-start-tracking-${rental.id}`}
+                            >
+                              <MapPin className="h-4 w-4" />
+                              Start Tracking
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {selectedTracking && (
+                <div className="mt-8">
+                  <TrackingMap sessionId={selectedTracking} isIndustry={false} />
+                </div>
+              )}
             </div>
           )}
         </section>
