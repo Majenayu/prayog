@@ -883,12 +883,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const exchangesWithDetails = (await Promise.all(
         allExchanges.map(async (exchange) => {
-          const offeredItem = await storage.getItemById(exchange.offeredItemId);
+          const offeredItem = exchange.offeredItemId ? await storage.getItemById(exchange.offeredItemId) : null;
           const requestedItem = exchange.requestedItemId ? await storage.getItemById(exchange.requestedItemId) : null;
           const offerer = await storage.getUserById(exchange.offererId);
           const receiver = exchange.receiverId ? await storage.getUserById(exchange.receiverId) : null;
 
-          if (!offeredItem || !offerer) {
+          if (!offerer) {
             return null;
           }
 
@@ -1021,7 +1021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // ML Metadata
         aiConfidence: aiResult.aiConfidence.toString(),
-        analysisReport: aiResult.analysisReport,
+        analysisReport: aiResult.analysisReport as any,
       });
 
       res.json({
