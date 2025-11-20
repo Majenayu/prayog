@@ -189,18 +189,14 @@ export const rentals = pgTable("rentals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const repairRequests = pgTable("repair_requests", {
+export const expertContacts = pgTable("expert_contacts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  itemId: text("item_id").notNull(),
-  userId: text("user_id").notNull(),
-  industryId: text("industry_id").notNull(),
-  issueDescription: text("issue_description").notNull(),
-  urgency: text("urgency").notNull(), // 'low', 'medium', 'high', 'critical'
-  status: text("status").notNull().default('pending'), // 'pending', 'in_progress', 'completed', 'cancelled'
-  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
-  actualCost: decimal("actual_cost", { precision: 10, scale: 2 }),
-  notes: text("notes"),
-  completedAt: timestamp("completed_at"),
+  name: text("name").notNull(),
+  role: text("role").notNull(), // 'cnc_expert', 'hydraulic_expert', 'electrical_expert', 'mechanical_expert', 'industrial_automation_expert', 'customer_support'
+  expertise: text("expertise").notNull(), // Description of their expertise
+  phone: text("phone").notNull(),
+  email: text("email").notNull(),
+  avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -321,16 +317,15 @@ export const insertExchangeSchema = createInsertSchema(exchanges).omit({
   status: true,
 });
 
-export const insertRepairRequestSchema = createInsertSchema(repairRequests).omit({
+export const insertExpertContactSchema = createInsertSchema(expertContacts).omit({
   id: true,
   createdAt: true,
-  completedAt: true,
-  status: true,
-  userId: true,
-  industryId: true,
 }).extend({
-  issueDescription: z.string().min(10, "Issue description must be at least 10 characters"),
-  urgency: z.enum(['low', 'medium', 'high', 'critical']),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  role: z.enum(['cnc_expert', 'hydraulic_expert', 'electrical_expert', 'mechanical_expert', 'industrial_automation_expert', 'customer_support']),
+  expertise: z.string().min(10, "Expertise description must be at least 10 characters"),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  email: z.string().email("Invalid email address"),
 });
 
 export const insertCartSchema = createInsertSchema(carts).omit({
@@ -401,8 +396,8 @@ export type Appraisal = typeof appraisals.$inferSelect;
 export type InsertExchange = z.infer<typeof insertExchangeSchema>;
 export type Exchange = typeof exchanges.$inferSelect;
 
-export type InsertRepairRequest = z.infer<typeof insertRepairRequestSchema>;
-export type RepairRequest = typeof repairRequests.$inferSelect;
+export type InsertExpertContact = z.infer<typeof insertExpertContactSchema>;
+export type ExpertContact = typeof expertContacts.$inferSelect;
 
 export type InsertCart = z.infer<typeof insertCartSchema>;
 export type Cart = typeof carts.$inferSelect;
@@ -439,11 +434,6 @@ export type ExchangeWithDetails = Exchange & {
   receiverName?: string;
 };
 
-export type RepairRequestWithDetails = RepairRequest & {
-  itemName?: string;
-  userName?: string;
-  imageUrl?: string;
-};
 
 export type ItemWithParts = Item & {
   parts?: Item[]; // Parts are also items with parentItemId set

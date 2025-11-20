@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeftRight, Wrench, CheckCircle2, AlertCircle, TrendingUp, Calendar, Zap } from "lucide-react";
+import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeftRight, Phone, CheckCircle2, AlertCircle, TrendingUp, Calendar, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { formatCurrency } from "@/lib/currency";
@@ -430,11 +430,11 @@ export default function Dashboard() {
               </Button>
               <Button 
                 variant="outline"
-                onClick={() => setLocation("/repairs")}
+                onClick={() => setLocation("/contacts")}
                 className="gap-2"
               >
-                <Wrench className="h-4 w-4" />
-                <span className="hidden sm:inline">Repairs</span>
+                <Phone className="h-4 w-4" />
+                <span className="hidden sm:inline">Contacts</span>
               </Button>
               <Button 
                 variant="outline"

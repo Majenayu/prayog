@@ -9,7 +9,7 @@ import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/dashboard";
 import IndustryDashboard from "@/pages/industry-dashboard";
 import ExchangesPage from "@/pages/exchanges";
-import RepairsPage from "@/pages/repairs";
+import ContactsPage from "@/pages/contacts";
 import ManageMachineParts from "@/pages/manage-machine-parts";
 import PartDiagram from "@/pages/part-diagram";
 import MachineBuilder from "@/pages/machine-builder";
@@ -75,8 +75,8 @@ function Router() {
         <ProtectedRoute component={ExchangesPage} />
       </Route>
       
-      <Route path="/repairs">
-        <ProtectedRoute component={RepairsPage} />
+      <Route path="/contacts">
+        <ProtectedRoute component={ContactsPage} />
       </Route>
       
       <Route path="/industry">
