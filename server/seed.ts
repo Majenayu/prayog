@@ -310,76 +310,76 @@ async function seedDatabase() {
     });
 
     const irb1600Robot = await storage.createItem({
-      name: "Welding Robot Arm IRB 1600",
-      description: "Industrial welding robot with 6-axis movement and precision control. Payload capacity: 10kg, Reach: 1.45m. Perfect for automated welding, material handling, and assembly operations.",
-      category: "Automation",
-      pricePerDay: "320.00",
+      name: "ABB IRB 1600 Industrial Robot",
+      description: "Premium 6-axis industrial robotic arm with exceptional precision and versatility. Payload capacity: 10kg, Reach: 1.45m. Perfect for automated welding, cutting, material handling, and assembly operations. Features advanced motion control and path planning capabilities.",
+      category: "Industrial Robotics",
+      pricePerDay: "450.00",
       quantity: 1,
-      imageUrl: "/images/IRB_1600_robot_main_body_763c8594.png",
+      imageUrl: "https://raw.githubusercontent.com/replit/replit/main/public/images/irb_1600_industrial_robot.png",
       industryId: roboticsIndustry.id,
       machineType: "IRB 1600",
       purchaseDate: new Date("2021-06-20"),
-      warrantyExpiry: new Date("2024-06-20"),
+      warrantyExpiry: new Date("2026-06-20"),
     });
 
     await storage.createItem({
-      name: "Vacuum Gripper System",
-      description: "High-performance vacuum gripper for automated picking and placing systems",
-      category: "Components",
-      pricePerDay: "150.00",
-      quantity: 3,
-      imageUrl: "/images/Vacuum_gripper_robot_part_6c59963c.png",
+      name: "Welding Torch Attachment",
+      description: "Professional-grade welding torch specifically designed for IRB 1600 robotic arm. Features precision nozzle control, integrated cable management, and compatibility with TIG/MIG welding systems. Ideal for automated welding operations.",
+      category: "Robot End Effectors",
+      pricePerDay: "220.00",
+      quantity: 2,
+      imageUrl: "https://raw.githubusercontent.com/replit/replit/main/public/images/welding_torch_tool.png",
       industryId: roboticsIndustry.id,
-      machineType: "Pneumatic Gripper",
+      machineType: "Welding Torch",
       parentItemId: irb1600Robot.id,
       partPosition: "top-left",
-      purchaseDate: new Date("2023-03-10"),
+      purchaseDate: new Date("2022-03-10"),
       warrantyExpiry: new Date("2026-03-10"),
     });
 
     await storage.createItem({
-      name: "Magnetic Gripper Pro",
-      description: "Powerful electromagnetic gripper for heavy metal parts handling",
-      category: "Components",
-      pricePerDay: "120.00",
+      name: "Precision Cutting Tool Assembly",
+      description: "Industrial-grade cutting tool attachment with advanced blade mechanism. Designed for precision cutting operations in manufacturing and fabrication. Features adjustable cutting depth and angle control.",
+      category: "Robot End Effectors",
+      pricePerDay: "195.00",
       quantity: 2,
-      imageUrl: "/images/Magnetic_gripper_robot_part_33f8af0b.png",
-      industryId: roboticsIndustry.id,
-      machineType: "Magnetic Gripper",
-      parentItemId: irb1600Robot.id,
-      partPosition: "top-right",
-      purchaseDate: new Date("2022-11-05"),
-      warrantyExpiry: new Date("2025-11-05"),
-    });
-
-    await storage.createItem({
-      name: "Precision Cutting Tool",
-      description: "High-precision cutting tool attachment for detailed work",
-      category: "Components",
-      pricePerDay: "180.00",
-      quantity: 2,
-      imageUrl: "/images/Cutting_tool_robot_part_0711d221.png",
+      imageUrl: "https://raw.githubusercontent.com/replit/replit/main/public/images/cutting_tool_attachment.png",
       industryId: roboticsIndustry.id,
       machineType: "Cutting Tool",
       parentItemId: irb1600Robot.id,
-      partPosition: "middle-left",
+      partPosition: "top-right",
       purchaseDate: new Date("2022-08-15"),
-      warrantyExpiry: new Date("2025-08-15"),
+      warrantyExpiry: new Date("2026-08-15"),
     });
 
     await storage.createItem({
-      name: "Spray Painting Nozzle",
-      description: "Automated spray painting nozzle with precision control",
-      category: "Components",
-      pricePerDay: "160.00",
+      name: "Electromagnetic Gripper System",
+      description: "Heavy-duty magnetic gripper with powerful electromagnetic coils for secure handling of ferrous metal parts. Features adjustable magnetic force and quick-release mechanism for efficient material handling operations.",
+      category: "Robot End Effectors",
+      pricePerDay: "175.00",
       quantity: 2,
-      imageUrl: "/images/Spray_painting_robot_part_59dc4833.png",
+      imageUrl: "https://raw.githubusercontent.com/replit/replit/main/public/images/magnetic_gripper.png",
       industryId: roboticsIndustry.id,
-      machineType: "Spray Nozzle",
+      machineType: "Magnetic Gripper",
+      parentItemId: irb1600Robot.id,
+      partPosition: "middle-left",
+      purchaseDate: new Date("2022-11-05"),
+      warrantyExpiry: new Date("2026-11-05"),
+    });
+
+    await storage.createItem({
+      name: "Industrial Vacuum Gripper Assembly",
+      description: "Multi-suction cup vacuum gripper system for automated picking and placing. Features multiple independent vacuum zones, adjustable suction pressure, and compatibility with various material surfaces including glass, plastic, and metal sheets.",
+      category: "Robot End Effectors",
+      pricePerDay: "165.00",
+      quantity: 3,
+      imageUrl: "https://raw.githubusercontent.com/replit/replit/main/public/images/vacuum_gripper_assembly.png",
+      industryId: roboticsIndustry.id,
+      machineType: "Vacuum Gripper",
       parentItemId: irb1600Robot.id,
       partPosition: "middle-right",
-      purchaseDate: new Date("2022-09-20"),
-      warrantyExpiry: new Date("2025-09-20"),
+      purchaseDate: new Date("2023-03-10"),
+      warrantyExpiry: new Date("2027-03-10"),
     });
 
     await storage.createHealthReport({
@@ -399,22 +399,34 @@ async function seedDatabase() {
       inspectedBy: "Certified Robotics Technician",
     });
 
-    console.log("✅ Created IRB 1600 robot with 4 parts (as items)");
+    console.log("✅ Created IRB 1600 robot with 4 end-effector parts");
 
     console.log("\n🎉 Database seeding completed successfully!");
     console.log("\n📊 Sample Data Summary:");
-    console.log("   - 3 Industry users (acme_industrial, techforge_mfg, acme_robotics / password: industry123 or password123)");
-    console.log("   - 2 Regular users (username: john_builder, sarah_contractor / password: user123)");
-    console.log("   - 5 Main equipment items + 4 parts (IRB 1600 parts) = 9 total items");
+    console.log("   - 3 Industry users (acme_industrial, techforge_mfg, acme_robotics)");
+    console.log("     • acme_industrial & techforge_mfg password: industry123");
+    console.log("     • acme_robotics password: password123");
+    console.log("   - 2 Regular users (john_builder, sarah_contractor / password: user123)");
+    console.log("   - 5 Main equipment items + 4 IRB 1600 parts = 9 total items");
     console.log("   - 6 Machine parts blueprints with locations");
     console.log("   - 4 Health reports with detailed inspection data");
     console.log("   - 3 AI appraisals with condition scoring");
     console.log("   - 2 Exchange offers");
     console.log("   - 1 Active rental");
-    console.log("\n🤖 IRB 1600 Robot System:");
-    console.log("   - Main Machine: Welding Robot Arm IRB 1600");
-    console.log("   - 4 Parts: Vacuum Gripper (top-left), Magnetic Gripper (top-right),");
-    console.log("              Cutting Tool (middle-left), Spray Nozzle (middle-right)\n");
+    console.log("\n🤖 IRB 1600 Industrial Robot System (ACME Robotics):");
+    console.log("   ┌─ Main Machine: ABB IRB 1600 Industrial Robot");
+    console.log("   │  • 6-axis robotic arm, 10kg payload, 1.45m reach");
+    console.log("   │  • Price: $450/day");
+    console.log("   │");
+    console.log("   └─ End Effector Parts (4 attachments):");
+    console.log("      1. Welding Torch Attachment (top-left) - $220/day");
+    console.log("         • TIG/MIG compatible, precision nozzle control");
+    console.log("      2. Precision Cutting Tool Assembly (top-right) - $195/day");
+    console.log("         • Advanced blade mechanism, adjustable depth/angle");
+    console.log("      3. Electromagnetic Gripper System (middle-left) - $175/day");
+    console.log("         • Heavy-duty magnetic handling for metal parts");
+    console.log("      4. Industrial Vacuum Gripper Assembly (middle-right) - $165/day");
+    console.log("         • Multi-suction zones for various materials\n");
 
   } catch (error) {
     console.error("❌ Error seeding database:", error);
