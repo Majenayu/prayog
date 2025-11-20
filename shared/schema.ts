@@ -33,6 +33,24 @@ export const items = pgTable("items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const carts = pgTable("carts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  status: text("status").notNull().default('active'), // 'active', 'checked_out', 'abandoned'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const cartItems = pgTable("cart_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cartId: text("cart_id").notNull(),
+  itemId: text("item_id").notNull(),
+  quantity: integer("quantity").notNull().default(1),
+  days: integer("days").notNull().default(1), // Rental duration
+  priceSnapshot: decimal("price_snapshot", { precision: 10, scale: 2 }).notNull(), // Price at time of adding to cart
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const machineParts = pgTable("machine_parts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   machineType: text("machine_type").notNull(), // e.g., "CNC Machine", "Hydraulic Press"
@@ -235,6 +253,21 @@ export const insertRepairRequestSchema = createInsertSchema(repairRequests).omit
   urgency: z.enum(['low', 'medium', 'high', 'critical']),
 });
 
+export const insertCartSchema = createInsertSchema(carts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+});
+
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+  days: z.number().min(1, "Rental period must be at least 1 day"),
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -266,6 +299,12 @@ export type Exchange = typeof exchanges.$inferSelect;
 export type InsertRepairRequest = z.infer<typeof insertRepairRequestSchema>;
 export type RepairRequest = typeof repairRequests.$inferSelect;
 
+export type InsertCart = z.infer<typeof insertCartSchema>;
+export type Cart = typeof carts.$inferSelect;
+
+export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
+export type CartItem = typeof cartItems.$inferSelect;
+
 // Extended types for API responses
 export type ItemWithIndustry = Item & {
   industryName?: string;
@@ -296,10 +335,20 @@ export type RepairRequestWithDetails = RepairRequest & {
 };
 
 export type ItemWithParts = Item & {
-  parts?: ItemPart[];
+  parts?: Item[]; // Parts are also items with parentItemId set
   healthReport?: HealthReport;
 };
 
 export type ItemPartWithRental = ItemPart & {
   currentRental?: PartRental;
+};
+
+export type CartWithItems = Cart & {
+  items?: (CartItem & { item?: Item })[];
+  totalAmount?: string;
+};
+
+export type CartItemWithDetails = CartItem & {
+  item?: Item;
+  subtotal?: string;
 };

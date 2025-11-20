@@ -302,79 +302,91 @@ async function seedDatabase() {
     console.log("✅ Created sample rental");
 
     const roboticsIndustry = await storage.createUser({
-      username: "robotics_test",
-      email: "test@robotics.com",
+      username: "acme_robotics",
+      email: "contact@acme-robotics.com",
       password: await bcrypt.hash("password123", 10),
       role: "industry",
-      companyName: "Robotics Solutions Inc",
+      companyName: "ACME Robotics",
     });
 
     const irb1600Robot = await storage.createItem({
-      name: "ABB IRB 1600 Industrial Robot",
-      description: "6-axis industrial robot with exceptional path accuracy and reliability. Ideal for material handling, machine tending, and assembly operations. Payload capacity: 10kg, Reach: 1.45m",
-      category: "Industrial Robotics",
-      pricePerDay: "450.00",
+      name: "Welding Robot Arm IRB 1600",
+      description: "Industrial welding robot with 6-axis movement and precision control. Payload capacity: 10kg, Reach: 1.45m. Perfect for automated welding, material handling, and assembly operations.",
+      category: "Automation",
+      pricePerDay: "320.00",
       quantity: 1,
-      imageUrl: "https://images.unsplash.com/photo-1563191911-e65f8655ebf9?w=800",
+      imageUrl: "/images/IRB_1600_robot_main_body_763c8594.png",
       industryId: roboticsIndustry.id,
       machineType: "IRB 1600",
-      purchaseDate: new Date("2022-01-15"),
-      warrantyExpiry: new Date("2027-01-15"),
+      purchaseDate: new Date("2021-06-20"),
+      warrantyExpiry: new Date("2024-06-20"),
     });
 
-    await storage.createItemPart({
-      itemId: irb1600Robot.id,
-      partName: "Welding Torch",
-      partNumber: "WT-IRB1600-001",
-      description: "High-precision welding torch attachment with automatic wire feed system",
-      health: 95,
-      isAvailable: true,
-      positionX: 75,
-      positionY: 25,
-      imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+    await storage.createItem({
+      name: "Vacuum Gripper System",
+      description: "High-performance vacuum gripper for automated picking and placing systems",
+      category: "Components",
+      pricePerDay: "150.00",
+      quantity: 3,
+      imageUrl: "/images/Vacuum_gripper_robot_part_6c59963c.png",
+      industryId: roboticsIndustry.id,
+      machineType: "Pneumatic Gripper",
+      parentItemId: irb1600Robot.id,
+      partPosition: "top-left",
+      purchaseDate: new Date("2023-03-10"),
+      warrantyExpiry: new Date("2026-03-10"),
     });
 
-    await storage.createItemPart({
-      itemId: irb1600Robot.id,
-      partName: "Cutting Tool",
-      partNumber: "CT-IRB1600-002",
-      description: "Industrial-grade cutting tool for precision material processing",
-      health: 88,
-      isAvailable: true,
-      positionX: 65,
-      positionY: 45,
-      imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+    await storage.createItem({
+      name: "Magnetic Gripper Pro",
+      description: "Powerful electromagnetic gripper for heavy metal parts handling",
+      category: "Components",
+      pricePerDay: "120.00",
+      quantity: 2,
+      imageUrl: "/images/Magnetic_gripper_robot_part_33f8af0b.png",
+      industryId: roboticsIndustry.id,
+      machineType: "Magnetic Gripper",
+      parentItemId: irb1600Robot.id,
+      partPosition: "top-right",
+      purchaseDate: new Date("2022-11-05"),
+      warrantyExpiry: new Date("2025-11-05"),
     });
 
-    await storage.createItemPart({
-      itemId: irb1600Robot.id,
-      partName: "Magnetic Gripper",
-      partNumber: "MG-IRB1600-003",
-      description: "Electromagnetic gripper for handling ferrous materials with variable strength control",
-      health: 92,
-      isAvailable: true,
-      positionX: 55,
-      positionY: 65,
-      imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+    await storage.createItem({
+      name: "Precision Cutting Tool",
+      description: "High-precision cutting tool attachment for detailed work",
+      category: "Components",
+      pricePerDay: "180.00",
+      quantity: 2,
+      imageUrl: "/images/Cutting_tool_robot_part_0711d221.png",
+      industryId: roboticsIndustry.id,
+      machineType: "Cutting Tool",
+      parentItemId: irb1600Robot.id,
+      partPosition: "middle-left",
+      purchaseDate: new Date("2022-08-15"),
+      warrantyExpiry: new Date("2025-08-15"),
     });
 
-    await storage.createItemPart({
-      itemId: irb1600Robot.id,
-      partName: "Vacuum Gripper",
-      partNumber: "VG-IRB1600-004",
-      description: "Multi-cup vacuum gripper system for handling non-ferrous and delicate materials",
-      health: 90,
-      isAvailable: true,
-      positionX: 45,
-      positionY: 75,
-      imageUrl: "https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400",
+    await storage.createItem({
+      name: "Spray Painting Nozzle",
+      description: "Automated spray painting nozzle with precision control",
+      category: "Components",
+      pricePerDay: "160.00",
+      quantity: 2,
+      imageUrl: "/images/Spray_painting_robot_part_59dc4833.png",
+      industryId: roboticsIndustry.id,
+      machineType: "Spray Nozzle",
+      parentItemId: irb1600Robot.id,
+      partPosition: "middle-right",
+      purchaseDate: new Date("2022-09-20"),
+      warrantyExpiry: new Date("2025-09-20"),
     });
 
     await storage.createHealthReport({
       itemId: irb1600Robot.id,
       overallCondition: "excellent",
-      conditionScore: 92,
-      visualInspection: "No visible damage or wear. All parts in pristine condition.",
+      conditionScore: 88,
+      visualInspection: "No visible damage or wear. All parts in good condition.",
       functionalTest: "All 6 axes functioning perfectly. Precision within tolerance. No unusual sounds or vibrations.",
       wearAndTear: "Minimal wear on moving parts. Regular maintenance has been performed.",
       defects: [],
@@ -387,19 +399,22 @@ async function seedDatabase() {
       inspectedBy: "Certified Robotics Technician",
     });
 
-    console.log("✅ Created IRB 1600 robot with parts");
+    console.log("✅ Created IRB 1600 robot with 4 parts (as items)");
 
     console.log("\n🎉 Database seeding completed successfully!");
     console.log("\n📊 Sample Data Summary:");
-    console.log("   - 3 Industry users (acme_industrial, techforge_mfg, robotics_test / password: industry123 or password123)");
+    console.log("   - 3 Industry users (acme_industrial, techforge_mfg, acme_robotics / password: industry123 or password123)");
     console.log("   - 2 Regular users (username: john_builder, sarah_contractor / password: user123)");
-    console.log("   - 5 Equipment items with purchase dates and warranties");
-    console.log("   - 6 Machine parts with locations");
-    console.log("   - 4 Item parts for IRB 1600 robot");
+    console.log("   - 5 Main equipment items + 4 parts (IRB 1600 parts) = 9 total items");
+    console.log("   - 6 Machine parts blueprints with locations");
     console.log("   - 4 Health reports with detailed inspection data");
     console.log("   - 3 AI appraisals with condition scoring");
     console.log("   - 2 Exchange offers");
-    console.log("   - 1 Active rental\n");
+    console.log("   - 1 Active rental");
+    console.log("\n🤖 IRB 1600 Robot System:");
+    console.log("   - Main Machine: Welding Robot Arm IRB 1600");
+    console.log("   - 4 Parts: Vacuum Gripper (top-left), Magnetic Gripper (top-right),");
+    console.log("              Cutting Tool (middle-left), Spray Nozzle (middle-right)\n");
 
   } catch (error) {
     console.error("❌ Error seeding database:", error);
