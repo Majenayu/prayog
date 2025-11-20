@@ -53,7 +53,7 @@ export const itemParts = pgTable("item_parts", {
   partName: text("part_name").notNull(),
   partNumber: text("part_number"),
   description: text("description").notNull(),
-  location: text("location"), // Position: 'top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right'
+  location: text("location").notNull(), // Position: 'top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right'
   health: integer("health").default(100), // 0-100 health score
   isAvailable: boolean("is_available").default(true), // Whether this specific part is available
   positionX: integer("position_x"), // X coordinate for visual diagram
@@ -190,6 +190,10 @@ export const insertMachinePartSchema = createInsertSchema(machineParts).omit({
 export const insertItemPartSchema = createInsertSchema(itemParts).omit({
   id: true,
   createdAt: true,
+}).extend({
+  location: z.enum(['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right'], {
+    errorMap: () => ({ message: "Location must be one of: top-left, top-right, middle-left, middle-right, bottom-left, bottom-right" })
+  }),
 });
 
 export const insertPartRentalSchema = createInsertSchema(partRentals).omit({

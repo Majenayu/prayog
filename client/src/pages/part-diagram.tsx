@@ -17,6 +17,7 @@ interface ItemPart {
   partName: string;
   partNumber: string | null;
   description: string;
+  location: string | null;
   health: number | null;
   isAvailable: boolean | null;
   positionX: number | null;
@@ -90,6 +91,55 @@ export default function PartDiagram() {
 
   const allPartsAvailable = parts.every(p => p.isAvailable && !p.currentRental);
 
+  const partsByLocation: Record<string, ItemPart | undefined> = {
+    'top-left': parts.find(p => p.location === 'top-left'),
+    'top-right': parts.find(p => p.location === 'top-right'),
+    'middle-left': parts.find(p => p.location === 'middle-left'),
+    'middle-right': parts.find(p => p.location === 'middle-right'),
+    'bottom-left': parts.find(p => p.location === 'bottom-left'),
+    'bottom-right': parts.find(p => p.location === 'bottom-right'),
+  };
+
+  const renderPartCard = (location: string, label: string) => {
+    const part = partsByLocation[location];
+    const isAvailable = part ? (part.isAvailable && !part.currentRental) : false;
+    const partImage = part ? (PART_IMAGES[part.partName] || part.imageUrl) : null;
+
+    return (
+      <div className="flex flex-col items-center gap-2 p-3 rounded-lg border bg-card">
+        <div className="text-xs font-medium text-muted-foreground">{label}</div>
+        {part ? (
+          <>
+            {partImage && (
+              <img
+                src={partImage}
+                alt={part.partName}
+                className={`w-24 h-24 object-contain rounded ${!isAvailable ? "grayscale opacity-60" : ""}`}
+                data-testid={`img-part-${location}`}
+              />
+            )}
+            <div className="text-center space-y-1 w-full">
+              <div className="font-semibold text-sm">{part.partName}</div>
+              <Badge variant={isAvailable ? "default" : "secondary"} className="text-xs">
+                {isAvailable ? "Available" : "Rented"}
+              </Badge>
+              <div className="flex items-center justify-center gap-1 text-xs">
+                <Heart className={`w-3 h-3 ${isAvailable ? "text-green-600" : "text-red-600"}`} />
+                <span className={isAvailable ? "text-green-600" : "text-red-600"}>
+                  {part.health || 100}%
+                </span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="w-24 h-24 flex items-center justify-center text-muted-foreground text-xs">
+            No Part
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -101,181 +151,45 @@ export default function PartDiagram() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <CardTitle data-testid="text-machine-name">{item.name}</CardTitle>
-                <CardDescription>{item.machineType || item.category}</CardDescription>
-              </div>
-              <Badge variant={allPartsAvailable ? "default" : "secondary"} data-testid="badge-machine-status">
-                {allPartsAvailable ? "Fully Available" : "Parts Rented"}
-              </Badge>
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <CardTitle data-testid="text-machine-name">{item.name}</CardTitle>
+              <CardDescription>{item.machineType || item.category}</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="relative">
+            <Badge variant={allPartsAvailable ? "default" : "secondary"} data-testid="badge-machine-status">
+              {allPartsAvailable ? "Fully Available" : "Parts Rented"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="space-y-4">
+              {renderPartCard('top-left', 'Top Left')}
+              {renderPartCard('middle-left', 'Middle Left')}
+              {renderPartCard('bottom-left', 'Bottom Left')}
+            </div>
+
+            <div className="flex items-center justify-center">
               <img
                 src={robotImage}
                 alt={item.name}
-                className={`w-full h-auto rounded-md ${!allPartsAvailable ? "opacity-50 grayscale" : ""}`}
+                className={`w-full h-auto rounded-md max-w-xs ${!allPartsAvailable ? "opacity-60" : ""}`}
                 data-testid="img-machine"
               />
-              <div className="absolute inset-0 pointer-events-none">
-                {parts.map((part, index) => {
-                  const x = part.positionX || (20 + index * 15);
-                  const y = part.positionY || (20 + index * 15);
-                  const isAvailable = part.isAvailable && !part.currentRental;
-
-                  return (
-                    <div
-                      key={part.id}
-                      className="absolute pointer-events-auto"
-                      style={{
-                        left: `${x}%`,
-                        top: `${y}%`,
-                        transform: "translate(-50%, -50%)",
-                      }}
-                    >
-                      <div className="relative group">
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            isAvailable ? "bg-green-500" : "bg-red-500"
-                          } animate-pulse cursor-pointer`}
-                          data-testid={`marker-part-${part.id}`}
-                        />
-                        <div
-                          className={`absolute z-10 w-1 ${
-                            isAvailable ? "bg-green-500" : "bg-red-500"
-                          }`}
-                          style={{
-                            left: "50%",
-                            top: "100%",
-                            height: "30px",
-                            transform: "translateX(-50%)",
-                          }}
-                        />
-                        <div
-                          className="absolute z-20 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white text-xs rounded px-2 py-1 whitespace-nowrap"
-                          style={{ top: "calc(100% + 35px)" }}
-                        >
-                          {part.partName}
-                          <br />
-                          Health: {part.health || 100}%
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
-            <div className="mt-4 text-sm text-muted-foreground">
-              <p>{item.description}</p>
+
+            <div className="space-y-4">
+              {renderPartCard('top-right', 'Top Right')}
+              {renderPartCard('middle-right', 'Middle Right')}
+              {renderPartCard('bottom-right', 'Bottom Right')}
             </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Machine Parts</CardTitle>
-              <CardDescription>
-                {allPartsAvailable
-                  ? "All parts available for rent"
-                  : `${parts.filter(p => !p.isAvailable || p.currentRental).length} of ${parts.length} parts currently rented`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {parts.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  No parts configured for this machine
-                </p>
-              ) : (
-                parts.map((part) => {
-                  const isAvailable = part.isAvailable && !part.currentRental;
-                  const partImage = PART_IMAGES[part.partName] || null;
-
-                  return (
-                    <Card
-                      key={part.id}
-                      className={`${!isAvailable ? "opacity-60" : ""}`}
-                      data-testid={`card-part-${part.id}`}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex gap-4">
-                          {partImage && (
-                            <img
-                              src={partImage}
-                              alt={part.partName}
-                              className={`w-20 h-20 object-contain rounded ${!isAvailable ? "grayscale" : ""}`}
-                              data-testid={`img-part-${part.id}`}
-                            />
-                          )}
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <h3 className="font-semibold" data-testid={`text-part-name-${part.id}`}>
-                                {part.partName}
-                              </h3>
-                              <Badge variant={isAvailable ? "default" : "secondary"} data-testid={`badge-part-status-${part.id}`}>
-                                {isAvailable ? "Available" : "Rented"}
-                              </Badge>
-                            </div>
-                            {part.partNumber && (
-                              <p className="text-xs text-muted-foreground">
-                                Part #: {part.partNumber}
-                              </p>
-                            )}
-                            <p className="text-sm text-muted-foreground">
-                              {part.description}
-                            </p>
-                            <div className="flex items-center gap-4 text-sm flex-wrap">
-                              <div className="flex items-center gap-1">
-                                <Heart className={`w-4 h-4 ${isAvailable ? "text-green-600" : "text-red-600"}`} />
-                                <span className={isAvailable ? "text-green-600" : "text-red-600"} data-testid={`text-part-health-${part.id}`}>
-                                  {part.health || 100}% Health
-                                </span>
-                              </div>
-                              {!isAvailable && part.currentRental && (
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>Currently Rented</span>
-                                </div>
-                              )}
-                            </div>
-                            {isAvailable && (
-                              <Button size="sm" className="mt-2" data-testid={`button-rent-${part.id}`}>
-                                <Wrench className="w-3 h-3 mr-1" />
-                                Rent This Part
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Legend</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-sm">Available - Part is ready to rent</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-sm">Unavailable - Part is currently rented</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
