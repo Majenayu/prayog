@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Edit, Trash2, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { formatCurrency } from "@/lib/currency";
 
 interface InventoryManagementProps {
   items: Item[];
@@ -38,19 +40,46 @@ export default function InventoryManagement({ items }: InventoryManagementProps)
     },
   });
 
+  const toggleAvailabilityMutation = useMutation({
+    mutationFn: async ({ itemId, status }: { itemId: string; status: string }) => {
+      await apiRequest("PATCH", `/api/items/${itemId}/availability`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/items/my-items'] });
+      toast({
+        title: "Availability updated",
+        description: "Item availability status has been changed.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredItems = items.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusBadge = (item: Item) => {
-    if (item.availableQuantity === 0) {
+    if (item.status === 'unavailable') {
+      return <Badge variant="destructive">Unavailable</Badge>;
+    } else if (item.availableQuantity === 0) {
       return <Badge variant="secondary">All Rented</Badge>;
     } else if (item.availableQuantity < item.quantity) {
       return <Badge className="bg-orange-500 text-white border-0">Partially Rented</Badge>;
     } else {
       return <Badge className="bg-green-500 text-white border-0">Available</Badge>;
     }
+  };
+
+  const handleToggleAvailability = (item: Item) => {
+    const newStatus = item.status === 'available' ? 'unavailable' : 'available';
+    toggleAvailabilityMutation.mutate({ itemId: item.id, status: newStatus });
   };
 
   return (
@@ -96,6 +125,7 @@ export default function InventoryManagement({ items }: InventoryManagementProps)
                     <TableHead>Price/Day</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Available</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -114,12 +144,20 @@ export default function InventoryManagement({ items }: InventoryManagementProps)
                         <Badge variant="secondary">{item.category}</Badge>
                       </TableCell>
                       <TableCell className="font-semibold text-primary">
-                        ${item.pricePerDay}
+                        {formatCurrency(item.pricePerDay)}
                       </TableCell>
                       <TableCell>
                         {item.availableQuantity} / {item.quantity}
                       </TableCell>
                       <TableCell>{getStatusBadge(item)}</TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={item.status === 'available'}
+                          onCheckedChange={() => handleToggleAvailability(item)}
+                          disabled={toggleAvailabilityMutation.isPending}
+                          data-testid={`toggle-availability-${item.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button
@@ -172,8 +210,18 @@ export default function InventoryManagement({ items }: InventoryManagementProps)
                           {item.availableQuantity} / {item.quantity} available
                         </span>
                         <span className="font-semibold text-primary">
-                          ${item.pricePerDay}/day
+                          {formatCurrency(item.pricePerDay)}/day
                         </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm pt-2">
+                        <span className="text-muted-foreground">Available:</span>
+                        <Switch
+                          checked={item.status === 'available'}
+                          onCheckedChange={() => handleToggleAvailability(item)}
+                          disabled={toggleAvailabilityMutation.isPending}
+                          data-testid={`toggle-availability-${item.id}`}
+                        />
                       </div>
 
                       <div className="flex gap-2 pt-2">

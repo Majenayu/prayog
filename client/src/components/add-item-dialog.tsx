@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { ITEM_CATEGORIES } from "@shared/constants";
 
 const addItemSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
@@ -216,13 +218,20 @@ export default function AddItemDialog({ open, onOpenChange }: AddItemDialogProps
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="e.g., Construction, Electronics" 
-                        {...field} 
-                        data-testid="input-item-category"
-                      />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-category">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {ITEM_CATEGORIES.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -254,13 +263,13 @@ export default function AddItemDialog({ open, onOpenChange }: AddItemDialogProps
                 name="pricePerDay"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price per Day ($) *</FormLabel>
+                    <FormLabel>Price per Day (₹) *</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
                         step="0.01" 
                         min="0" 
-                        placeholder="50.00" 
+                        placeholder="5000.00" 
                         {...field} 
                         data-testid="input-item-price"
                       />

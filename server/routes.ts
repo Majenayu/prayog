@@ -212,6 +212,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/items/:id/availability", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== "industry") {
+        return res.status(403).json({ message: "Only industries can update item availability" });
+      }
+
+      const item = await storage.getItemById(req.params.id);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      if (item.industryId !== req.session.userId) {
+        return res.status(403).json({ message: "Not authorized to update this item" });
+      }
+
+      const { status } = req.body;
+      if (!status || (status !== 'available' && status !== 'unavailable')) {
+        return res.status(400).json({ message: "Invalid status. Must be 'available' or 'unavailable'" });
+      }
+
+      const updatedItem = await storage.updateItem(req.params.id, { status });
+      res.json(updatedItem);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Failed to update availability" });
+    }
+  });
+
   app.delete("/api/items/:id", async (req, res) => {
     try {
       if (!req.session.userId) {

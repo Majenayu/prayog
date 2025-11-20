@@ -12,6 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import InventoryManagement from "@/components/inventory-management";
 import RevenueAnalytics from "@/components/revenue-analytics";
 import AddItemDialog from "@/components/add-item-dialog";
+import { formatCurrencyShort } from "@/lib/currency";
 
 export default function IndustryDashboard() {
   const [, setLocation] = useLocation();
@@ -147,7 +148,7 @@ export default function IndustryDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-chart-3" data-testid="text-total-revenue">
-                ${totalRevenue.toFixed(2)}
+                {formatCurrencyShort(totalRevenue)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 All-time earnings
@@ -162,7 +163,7 @@ export default function IndustryDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-chart-4" data-testid="text-month-revenue">
-                ${thisMonthRevenue.toFixed(2)}
+                {formatCurrencyShort(thisMonthRevenue)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Current month

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TrendingUp, DollarSign, Calendar, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatCurrency, formatCurrencyShort } from "@/lib/currency";
 
 interface RevenueAnalyticsProps {
   rentals: RentalWithDetails[];
@@ -93,7 +94,7 @@ export default function RevenueAnalytics({ rentals, items }: RevenueAnalyticsPro
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-chart-3" data-testid="text-analytics-total">
-              ${totalRevenue.toFixed(2)}
+              {formatCurrencyShort(totalRevenue)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               All-time earnings
@@ -108,7 +109,7 @@ export default function RevenueAnalytics({ rentals, items }: RevenueAnalyticsPro
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-chart-4" data-testid="text-analytics-month">
-              ${thisMonthRevenue.toFixed(2)}
+              {formatCurrencyShort(thisMonthRevenue)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Current month revenue
@@ -162,7 +163,7 @@ export default function RevenueAnalytics({ rentals, items }: RevenueAnalyticsPro
                     dataKey="revenue" 
                     stroke="hsl(var(--chart-1))" 
                     strokeWidth={2}
-                    name="Revenue ($)"
+                    name="Revenue (₹)"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -187,7 +188,7 @@ export default function RevenueAnalytics({ rentals, items }: RevenueAnalyticsPro
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry) => `${entry.name}: $${entry.revenue.toFixed(0)}`}
+                    label={(entry) => `${entry.name}: ${formatCurrencyShort(entry.revenue)}`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="revenue"
@@ -244,7 +245,7 @@ export default function RevenueAnalytics({ rentals, items }: RevenueAnalyticsPro
                       <TableCell>{rental.userName}</TableCell>
                       <TableCell>{rental.days}</TableCell>
                       <TableCell className="font-semibold text-primary">
-                        ${rental.totalAmount}
+                        {formatCurrency(rental.totalAmount)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {new Date(rental.createdAt!).toLocaleDateString()}

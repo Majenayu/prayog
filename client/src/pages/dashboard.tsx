@@ -15,6 +15,7 @@ import { AppraisalDialog } from "@/components/appraisal-dialog";
 import { AIAppraisalDialog } from "@/components/ai-appraisal-dialog";
 import { MachinePartsViewer } from "@/components/machine-parts-viewer";
 import { MachineDiagramViewer } from "@/components/machine-diagram-viewer";
+import { formatCurrency } from "@/lib/currency";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -238,7 +239,7 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between pt-2">
                     <div>
                       <div className="text-2xl font-bold text-primary">
-                        ${item.pricePerDay}
+                        {formatCurrency(item.pricePerDay)}
                       </div>
                       <div className="text-xs text-muted-foreground">per day</div>
                     </div>
