@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RentHub - Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-content">
+      <h1 class="nav-logo">🏗️ RentHub</h1>
+      <div class="nav-menu" id="navMenu">
+        <a href="dashboard.html" class="nav-link active">Dashboard</a>
+        <a href="appraisal.html" class="nav-link">AI Appraisal</a>
+        <a href="health-report.html" class="nav-link">Health Reports</a>
+        <a href="machine-parts.html" class="nav-link">Machine Parts</a>
+        <a href="exchange.html" class="nav-link">Exchange</a>
+      </div>
+      <div class="nav-right">
+        <span id="userWelcome" class="nav-user"></span>
+        <button id="logoutBtn" class="btn btn-secondary btn-small">Logout</button>
+      </div>
+    </div>
+  </nav>
+  
+  <div class="container">
+    <!-- User Dashboard -->
+    <div id="userDashboard">
+      <div class="dashboard-header">
+        <h2>Browse Equipment</h2>
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search equipment...">
+        </div>
+      </div>
+      
+      <div class="filters">
+        <button class="filter-btn active" data-category="all">All</button>
+        <button class="filter-btn" data-category="Machinery">Machinery</button>
+        <button class="filter-btn" data-category="Automation">Automation</button>
+        <button class="filter-btn" data-category="Components">Components</button>
+        <button class="filter-btn" data-category="Tools">Tools</button>
+      </div>
+      
+      <div id="itemsGrid" class="items-grid"></div>
+      
+      <div class="section">
+        <h3>My Rentals</h3>
+        <div id="rentalsTable" class="table-container"></div>
+      </div>
+    </div>
+    
+    <!-- Industry Dashboard -->
+    <div id="industryDashboard" style="display: none;">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h3 id="totalItems">0</h3>
+          <p>Total Items</p>
+        </div>
+        <div class="stat-card">
+          <h3 id="activeRentals">0</h3>
+          <p>Active Rentals</p>
+        </div>
+        <div class="stat-card">
+          <h3 id="totalRevenue">$0</h3>
+          <p>Total Revenue</p>
+        </div>
+        <div class="stat-card">
+          <h3 id="totalRentals">0</h3>
+          <p>All Rentals</p>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-header">
+          <h3>My Equipment</h3>
+          <button id="addItemBtn" class="btn btn-primary btn-small">+ Add Equipment</button>
+        </div>
+        <div id="industryItemsGrid" class="items-grid"></div>
+      </div>
+      
+      <div class="section">
+        <h3>Rental History</h3>
+        <div id="industryRentalsTable" class="table-container"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Rental Modal -->
+  <div id="rentalModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="modalItemName"></h2>
+      <img id="modalItemImage" src="" alt="">
+      <p id="modalItemDescription"></p>
+      <p class="price"><strong>Price:</strong> $<span id="modalItemPrice"></span>/day</p>
+      <p><strong>Available:</strong> <span id="modalItemAvailable"></span></p>
+      <div class="form-group">
+        <label for="rentalDays">Number of Days:</label>
+        <input type="number" id="rentalDays" min="1" value="1">
+      </div>
+      <p class="total-price">Total: $<span id="totalPrice">0</span></p>
+      <button id="confirmRentalBtn" class="btn btn-primary">Confirm Rental</button>
+    </div>
+  </div>
+  
+  <!-- Add Item Modal -->
+  <div id="addItemModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Add New Equipment</h2>
+      <form id="addItemForm">
+        <div class="form-group">
+          <label for="itemName">Equipment Name</label>
+          <input type="text" id="itemName" required>
+        </div>
+        <div class="form-group">
+          <label for="itemCategory">Category</label>
+          <select id="itemCategory" required>
+            <option value="Machinery">Machinery</option>
+            <option value="Automation">Automation</option>
+            <option value="Components">Components</option>
+            <option value="Tools">Tools</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="itemMachineType">Machine Type</label>
+          <input type="text" id="itemMachineType" required>
+        </div>
+        <div class="form-group">
+          <label for="itemDescription">Description</label>
+          <textarea id="itemDescription" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="itemPrice">Price per Day ($)</label>
+          <input type="number" id="itemPrice" min="1" required>
+        </div>
+        <div class="form-group">
+          <label for="itemQuantity">Quantity</label>
+          <input type="number" id="itemQuantity" min="1" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Equipment</button>
+      </form>
+    </div>
+  </div>
+  
+  <script src="app.js"></script>
+</body>
+</html>

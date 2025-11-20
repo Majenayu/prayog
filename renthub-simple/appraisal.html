@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Appraisal - RentHub</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-content">
+      <h1 class="nav-logo">🏗️ RentHub</h1>
+      <div class="nav-menu">
+        <a href="dashboard.html" class="nav-link">Dashboard</a>
+        <a href="appraisal.html" class="nav-link active">AI Appraisal</a>
+        <a href="health-report.html" class="nav-link">Health Reports</a>
+        <a href="machine-parts.html" class="nav-link">Machine Parts</a>
+        <a href="exchange.html" class="nav-link">Exchange</a>
+      </div>
+      <div class="nav-right">
+        <span id="userWelcome" class="nav-user"></span>
+        <button id="logoutBtn" class="btn btn-secondary btn-small">Logout</button>
+      </div>
+    </div>
+  </nav>
+  
+  <div class="container">
+    <div class="ai-section">
+      <h2>🤖 AI-Powered Equipment Appraisal</h2>
+      <p>Upload an image and select an item to get instant AI-powered market valuation and condition analysis</p>
+    </div>
+    
+    <div class="section">
+      <h3>Get AI Appraisal</h3>
+      <form id="appraisalForm">
+        <div class="form-group">
+          <label for="appraisalItem">Select Equipment</label>
+          <select id="appraisalItem" required></select>
+        </div>
+        <div class="form-group">
+          <label>Upload Image (Optional - works with/without image)</label>
+          <div class="upload-area" id="appraisalUploadArea">
+            <input type="file" id="appraisalImage" accept="image/*">
+            <p>Click to upload image or drag and drop</p>
+            <p style="font-size: 14px; color: #666;">AI analysis works even without image upload</p>
+            <img id="appraisalPreview" class="preview-image" style="display: none;">
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Get AI Appraisal</button>
+      </form>
+    </div>
+    
+    <div id="appraisalResults" class="section" style="display: none;">
+      <h3>Appraisal Results</h3>
+      <div class="result-grid">
+        <div class="result-item">
+          <h4>Estimated Market Value</h4>
+          <p id="estimatedValue">$0</p>
+        </div>
+        <div class="result-item">
+          <h4>Condition Score</h4>
+          <p id="conditionScore">0/100</p>
+        </div>
+        <div class="result-item">
+          <h4>Market Demand</h4>
+          <p id="marketDemand">-</p>
+        </div>
+        <div class="result-item">
+          <h4>AI Confidence</h4>
+          <p id="mlConfidence">0%</p>
+        </div>
+      </div>
+      <div class="mt-20">
+        <h4>AI Analysis Notes:</h4>
+        <p id="aiNotes"></p>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h3>Previous Appraisals</h3>
+      <div id="appraisalsList"></div>
+    </div>
+  </div>
+  
+  <script src="app.js"></script>
+</body>
+</html>

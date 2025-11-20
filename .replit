@@ -27,15 +27,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Simple RentHub"
+args = "RentHub"
 
 [[workflows.workflow]]
-name = "Simple RentHub"
+name = "RentHub"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd simple-renthub && npm start"
+args = "cd renthub-simple && npm start"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
