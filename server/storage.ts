@@ -3,7 +3,7 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc, and } from "drizzle-orm";
 import { 
-  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals, carts, cartItems, products, industryProducts,
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals, carts, cartItems, products, industryProducts, machines, machineComponents,
   type User, type InsertUser, 
   type Item, type InsertItem, 
   type Product, type InsertProduct,
@@ -17,7 +17,10 @@ import {
   type ItemPart, type InsertItemPart,
   type PartRental, type InsertPartRental,
   type Cart, type InsertCart,
-  type CartItem, type InsertCartItem
+  type CartItem, type InsertCartItem,
+  type Machine, type InsertMachine,
+  type MachineComponent, type InsertMachineComponent,
+  type MachineWithComponents
 } from "@shared/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL || "";
@@ -119,6 +122,20 @@ export interface IStorage {
   getCartItemsByCartId(cartId: string): Promise<CartItem[]>;
   updateCartItem(id: string, updates: { quantity?: number; days?: number }): Promise<CartItem | null>;
   deleteCartItem(id: string): Promise<boolean>;
+
+  // Machines
+  createMachine(machine: Omit<InsertMachine, 'status'>): Promise<Machine>;
+  getMachines(): Promise<Machine[]>;
+  getMachineById(id: string): Promise<MachineWithComponents | null>;
+  getMachinesByIndustry(industryId: string): Promise<Machine[]>;
+  updateMachine(id: string, updates: Partial<Machine>): Promise<Machine | null>;
+  deleteMachine(id: string): Promise<boolean>;
+
+  // Machine Components
+  addMachineComponent(component: InsertMachineComponent): Promise<MachineComponent>;
+  getMachineComponentsByMachineId(machineId: string): Promise<MachineComponent[]>;
+  deleteMachineComponent(id: string): Promise<boolean>;
+  deleteMachineComponentsByMachineId(machineId: string): Promise<boolean>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -456,6 +473,81 @@ export class PostgresStorage implements IStorage {
 
   async deleteCartItem(id: string): Promise<boolean> {
     const result = await db.delete(cartItems).where(eq(cartItems.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Machines
+  async createMachine(machine: Omit<InsertMachine, 'status'>): Promise<Machine> {
+    const [newMachine] = await db.insert(machines).values(machine).returning();
+    return newMachine;
+  }
+
+  async getMachines(): Promise<Machine[]> {
+    return await db.select().from(machines).orderBy(desc(machines.createdAt));
+  }
+
+  async getMachineById(id: string): Promise<MachineWithComponents | null> {
+    const [machine] = await db.select().from(machines).where(eq(machines.id, id)).limit(1);
+    if (!machine) return null;
+
+    const components = await db.select().from(machineComponents)
+      .where(eq(machineComponents.machineId, id));
+
+    const componentsWithProducts = await Promise.all(
+      components.map(async (component) => {
+        const [product] = await db.select().from(industryProducts)
+          .where(eq(industryProducts.id, component.industryProductId))
+          .limit(1);
+        return {
+          ...component,
+          product: product || undefined,
+        };
+      })
+    );
+
+    return {
+      ...machine,
+      components: componentsWithProducts,
+    };
+  }
+
+  async getMachinesByIndustry(industryId: string): Promise<Machine[]> {
+    return await db.select().from(machines)
+      .where(eq(machines.industryId, industryId))
+      .orderBy(desc(machines.createdAt));
+  }
+
+  async updateMachine(id: string, updates: Partial<Machine>): Promise<Machine | null> {
+    const [updatedMachine] = await db.update(machines).set(updates).where(eq(machines.id, id)).returning();
+    return updatedMachine || null;
+  }
+
+  async deleteMachine(id: string): Promise<boolean> {
+    await this.deleteMachineComponentsByMachineId(id);
+    const result = await db.delete(machines).where(eq(machines.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Machine Components
+  async addMachineComponent(component: InsertMachineComponent): Promise<MachineComponent> {
+    const [newComponent] = await db.insert(machineComponents).values(component).returning();
+    return newComponent;
+  }
+
+  async getMachineComponentsByMachineId(machineId: string): Promise<MachineComponent[]> {
+    return await db.select().from(machineComponents)
+      .where(eq(machineComponents.machineId, machineId));
+  }
+
+  async deleteMachineComponent(id: string): Promise<boolean> {
+    const result = await db.delete(machineComponents).where(eq(machineComponents.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async deleteMachineComponentsByMachineId(machineId: string): Promise<boolean> {
+    const result = await db.delete(machineComponents)
+      .where(eq(machineComponents.machineId, machineId))
+      .returning();
     return result.length > 0;
   }
 }
