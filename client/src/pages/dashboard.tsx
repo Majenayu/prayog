@@ -220,8 +220,13 @@ function FakeAppraisalDialog({ item, open, onOpenChange }: FakeDialogProps) {
 }
 
 function RentalBookingDialog({ item, open, onOpenChange }: FakeDialogProps) {
-  const [days, setDays] = useState(1);
+  const [daysInput, setDaysInput] = useState('1');
   const { toast } = useToast();
+
+  const days = useMemo(() => {
+    const parsed = parseInt(daysInput);
+    return isNaN(parsed) || parsed < 1 ? 1 : parsed;
+  }, [daysInput]);
 
   const totalPrice = useMemo(() => {
     return parseFloat(item.pricePerDay) * days;
@@ -242,7 +247,7 @@ function RentalBookingDialog({ item, open, onOpenChange }: FakeDialogProps) {
         description: `Successfully booked ${item.name} for ${days} day${days > 1 ? 's' : ''}.`,
       });
       onOpenChange(false);
-      setDays(1);
+      setDaysInput('1');
     },
     onError: (error: any) => {
       toast({
@@ -298,17 +303,12 @@ function RentalBookingDialog({ item, open, onOpenChange }: FakeDialogProps) {
               type="number"
               min="1"
               step="1"
-              value={days}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === '') {
-                  setDays(1);
-                } else {
-                  const numValue = parseInt(value);
-                  if (!isNaN(numValue)) {
-                    setDays(Math.max(1, numValue));
-                  }
-                }
+              value={daysInput}
+              onChange={(e) => setDaysInput(e.target.value)}
+              onBlur={() => {
+                const parsed = parseInt(daysInput, 10);
+                const sanitized = isNaN(parsed) || parsed < 1 ? 1 : parsed;
+                setDaysInput(String(sanitized));
               }}
               disabled={createRentalMutation.isPending}
               data-testid="input-rental-days"
