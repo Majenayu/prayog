@@ -3,7 +3,7 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import { eq, desc } from "drizzle-orm";
 import { 
-  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests,
+  users, items, rentals, machineParts, healthReports, appraisals, exchanges, repairRequests, itemParts, partRentals,
   type User, type InsertUser, 
   type Item, type InsertItem, 
   type Rental, type InsertRental,
@@ -11,7 +11,9 @@ import {
   type HealthReport, type InsertHealthReport,
   type Appraisal, type InsertAppraisal,
   type Exchange, type InsertExchange,
-  type RepairRequest, type InsertRepairRequest
+  type RepairRequest, type InsertRepairRequest,
+  type ItemPart, type InsertItemPart,
+  type PartRental, type InsertPartRental
 } from "@shared/schema";
 
 const DATABASE_URL = process.env.DATABASE_URL || "";
@@ -75,6 +77,19 @@ export interface IStorage {
   getRepairRequestsByUser(userId: string): Promise<RepairRequest[]>;
   getRepairRequestsByIndustry(industryId: string): Promise<RepairRequest[]>;
   updateRepairRequest(id: string, updates: Partial<RepairRequest>): Promise<RepairRequest | null>;
+
+  // Item Parts
+  createItemPart(part: InsertItemPart): Promise<ItemPart>;
+  getItemPartsByItemId(itemId: string): Promise<ItemPart[]>;
+  getItemPartById(id: string): Promise<ItemPart | null>;
+  updateItemPart(id: string, updates: Partial<ItemPart>): Promise<ItemPart | null>;
+  deleteItemPart(id: string): Promise<boolean>;
+
+  // Part Rentals
+  createPartRental(rental: InsertPartRental): Promise<PartRental>;
+  getPartRentalsByUser(userId: string): Promise<PartRental[]>;
+  getActivePartRentalByPartId(itemPartId: string): Promise<PartRental | null>;
+  updatePartRental(id: string, updates: Partial<PartRental>): Promise<PartRental | null>;
 }
 
 export class PostgresStorage implements IStorage {
@@ -264,6 +279,54 @@ export class PostgresStorage implements IStorage {
   async updateRepairRequest(id: string, updates: Partial<RepairRequest>): Promise<RepairRequest | null> {
     const [updatedRequest] = await db.update(repairRequests).set(updates).where(eq(repairRequests.id, id)).returning();
     return updatedRequest || null;
+  }
+
+  // Item Parts
+  async createItemPart(part: InsertItemPart): Promise<ItemPart> {
+    const [newPart] = await db.insert(itemParts).values(part).returning();
+    return newPart;
+  }
+
+  async getItemPartsByItemId(itemId: string): Promise<ItemPart[]> {
+    return await db.select().from(itemParts).where(eq(itemParts.itemId, itemId)).orderBy(desc(itemParts.createdAt));
+  }
+
+  async getItemPartById(id: string): Promise<ItemPart | null> {
+    const [part] = await db.select().from(itemParts).where(eq(itemParts.id, id)).limit(1);
+    return part || null;
+  }
+
+  async updateItemPart(id: string, updates: Partial<ItemPart>): Promise<ItemPart | null> {
+    const [updatedPart] = await db.update(itemParts).set(updates).where(eq(itemParts.id, id)).returning();
+    return updatedPart || null;
+  }
+
+  async deleteItemPart(id: string): Promise<boolean> {
+    const result = await db.delete(itemParts).where(eq(itemParts.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Part Rentals
+  async createPartRental(rental: InsertPartRental): Promise<PartRental> {
+    const [newRental] = await db.insert(partRentals).values(rental).returning();
+    return newRental;
+  }
+
+  async getPartRentalsByUser(userId: string): Promise<PartRental[]> {
+    return await db.select().from(partRentals).where(eq(partRentals.userId, userId)).orderBy(desc(partRentals.createdAt));
+  }
+
+  async getActivePartRentalByPartId(itemPartId: string): Promise<PartRental | null> {
+    const [rental] = await db.select().from(partRentals)
+      .where(eq(partRentals.itemPartId, itemPartId))
+      .where(eq(partRentals.status, 'active'))
+      .limit(1);
+    return rental || null;
+  }
+
+  async updatePartRental(id: string, updates: Partial<PartRental>): Promise<PartRental | null> {
+    const [updatedRental] = await db.update(partRentals).set(updates).where(eq(partRentals.id, id)).returning();
+    return updatedRental || null;
   }
 }
 
