@@ -42,6 +42,35 @@ export const machineParts = pgTable("machine_parts", {
   positionX: integer("position_x"), // X coordinate for visual diagram (percentage or pixels)
   positionY: integer("position_y"), // Y coordinate for visual diagram (percentage or pixels)
   diagramImageUrl: text("diagram_image_url"), // Image of the specific part for diagram
+  health: integer("health").default(100), // 0-100 health score
+  isAvailable: boolean("is_available").default(true), // Whether part is available for rent
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const itemParts = pgTable("item_parts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  itemId: text("item_id").notNull(), // Reference to specific machine item
+  partName: text("part_name").notNull(),
+  partNumber: text("part_number"),
+  description: text("description").notNull(),
+  health: integer("health").default(100), // 0-100 health score
+  isAvailable: boolean("is_available").default(true), // Whether this specific part is available
+  positionX: integer("position_x"), // X coordinate for visual diagram
+  positionY: integer("position_y"), // Y coordinate for visual diagram
+  imageUrl: text("image_url"), // Image of the part
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const partRentals = pgTable("part_rentals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  itemPartId: text("item_part_id").notNull(), // Reference to specific item part
+  userId: text("user_id").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  days: integer("days").notNull(),
+  pricePerDay: decimal("price_per_day", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  status: text("status").notNull().default('active'), // 'active', 'completed', 'cancelled'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -157,6 +186,18 @@ export const insertMachinePartSchema = createInsertSchema(machineParts).omit({
   createdAt: true,
 });
 
+export const insertItemPartSchema = createInsertSchema(itemParts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPartRentalSchema = createInsertSchema(partRentals).omit({
+  id: true,
+  createdAt: true,
+  endDate: true,
+  status: true,
+});
+
 export const insertHealthReportSchema = createInsertSchema(healthReports).omit({
   id: true,
   createdAt: true,
@@ -200,6 +241,12 @@ export type Rental = typeof rentals.$inferSelect;
 export type InsertMachinePart = z.infer<typeof insertMachinePartSchema>;
 export type MachinePart = typeof machineParts.$inferSelect;
 
+export type InsertItemPart = z.infer<typeof insertItemPartSchema>;
+export type ItemPart = typeof itemParts.$inferSelect;
+
+export type InsertPartRental = z.infer<typeof insertPartRentalSchema>;
+export type PartRental = typeof partRentals.$inferSelect;
+
 export type InsertHealthReport = z.infer<typeof insertHealthReportSchema>;
 export type HealthReport = typeof healthReports.$inferSelect;
 
@@ -239,4 +286,13 @@ export type RepairRequestWithDetails = RepairRequest & {
   itemName?: string;
   userName?: string;
   imageUrl?: string;
+};
+
+export type ItemWithParts = Item & {
+  parts?: ItemPart[];
+  healthReport?: HealthReport;
+};
+
+export type ItemPartWithRental = ItemPart & {
+  currentRental?: PartRental;
 };
