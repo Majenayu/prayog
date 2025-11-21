@@ -66,9 +66,11 @@ Preferred communication style: Simple, everyday language.
   - Configured via MONGODB_URI environment variable
   - Seeded with admin user and expert contacts on startup
   - Connection handled in server/mongodb.ts
+  - MongoStorage implements core features: auth, products, rentals, contacts, notifications, health reports, appraisals, exchanges
+  - Advanced features (carts, machine builder, tracking) temporarily return stubs with warnings
 - **PostgreSQL** (Fallback): Neon serverless with Drizzle ORM
-  - Used for backward compatibility with existing storage layer
-  - Full migration to MongoDB in progress
+  - Used automatically when MONGODB_URI is not set
+  - Maintains full feature support including carts, machine builder, and tracking
 
 **MongoDB Collections**
 - **Users**: Admin and user credentials (admin: ayusha/ayusha)
