@@ -1624,6 +1624,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin seed endpoint - creates the initial admin user
+  app.post("/api/admin/seed", async (req, res) => {
+    try {
+      const { secretKey } = req.body;
+      
+      // Simple security check - you should set this as an environment variable
+      const ADMIN_SEED_KEY = process.env.ADMIN_SEED_KEY || "rental-admin-seed-2024";
+      if (secretKey !== ADMIN_SEED_KEY) {
+        return res.status(403).json({ message: "Invalid secret key" });
+      }
+
+      // Check if admin already exists
+      const existingAdmin = await storage.getUserByUsername("ayusha");
+      if (existingAdmin) {
+        return res.status(400).json({ message: "Admin user already exists" });
+      }
+
+      // Create admin user with hashed password
+      const hashedPassword = await bcrypt.hash("ayusha", 10);
+      const adminUser = await storage.createUser({
+        username: "ayusha",
+        email: "admin@renthub.com",
+        password: hashedPassword,
+        role: "admin",
+      });
+
+      const { password, ...adminWithoutPassword } = adminUser;
+      res.json({ 
+        message: "Admin user created successfully", 
+        user: adminWithoutPassword 
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to seed admin user" });
+    }
+  });
+
   // Admin Routes
   app.get("/api/admin/all-orders", async (req, res) => {
     try {
@@ -1660,6 +1696,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Rental not found" });
       }
 
+      // Fetch health report if available
+      const healthReport = await storage.getHealthReportByItemId(rentalWithDetails.itemId);
+
       const qrData = {
         rentalId: rentalWithDetails.id,
         userId: rentalWithDetails.userId,
@@ -1675,6 +1714,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pricePerDay: rentalWithDetails.pricePerDay,
         totalAmount: rentalWithDetails.totalAmount,
         status: rentalWithDetails.status,
+        healthReport: healthReport ? {
+          overallCondition: healthReport.overallCondition,
+          conditionScore: healthReport.conditionScore,
+          visualInspection: healthReport.visualInspection,
+          functionalTest: healthReport.functionalTest,
+          wearAndTear: healthReport.wearAndTear,
+        } : undefined,
       };
 
       const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {

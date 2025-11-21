@@ -10,8 +10,6 @@ import { formatCurrency } from "@/lib/currency";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import QRCode from "qrcode";
-
 interface RentalWithDetails {
   id: string;
   itemId: string;
@@ -27,6 +25,7 @@ interface RentalWithDetails {
   userName?: string;
   industryName?: string;
   pricePerDay?: string;
+  healthReport?: any;
 }
 
 export default function AdminOrders() {
@@ -43,11 +42,17 @@ export default function AdminOrders() {
 
   const generateQrMutation = useMutation({
     mutationFn: async (rentalId: string) => {
-      return await apiRequest(`/api/admin/generate-qr/${rentalId}`, {
+      const response = await fetch(`/api/admin/generate-qr/${rentalId}`, {
         method: 'POST',
+        credentials: 'include',
       });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate QR code');
+      }
+      return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: { qrCodeUrl: string; qrData: any }) => {
       setQrCodeUrl(data.qrCodeUrl);
       setQrDialogOpen(true);
       toast({

@@ -17,6 +17,7 @@ import MachinesPage from "@/pages/machines";
 import MyRentals from "@/pages/my-rentals";
 import DemoFiles from "@/pages/demo-files";
 import AdminOrders from "@/pages/admin-orders";
+import QRViewer from "@/pages/qr-viewer";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: string }) {
@@ -111,6 +112,10 @@ function Router() {
       
       <Route path="/parts/:itemId">
         <ProtectedRoute component={PartDiagram} />
+      </Route>
+      
+      <Route path="/qr/:rentalId">
+        <QRViewer />
       </Route>
       
       <Route component={NotFound} />
