@@ -741,6 +741,17 @@ export class PostgresStorage implements IStorage {
   }
 }
 
-// Using PostgreSQL storage as primary
-// MongoDB is used in parallel for specific features (expert contacts, etc.)
-export const storage = new PostgresStorage();
+// Use MongoDB when MONGODB_URI is configured
+import { MongoStorage } from './mongo-storage';
+
+const useMongoStorage = !!process.env.MONGODB_URI;
+
+export const storage: IStorage = useMongoStorage 
+  ? new MongoStorage()
+  : new PostgresStorage();
+
+if (useMongoStorage) {
+  console.log('📊 Using MongoDB storage');
+} else {
+  console.log('📊 Using PostgreSQL storage (fallback)');
+}
