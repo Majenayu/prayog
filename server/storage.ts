@@ -741,4 +741,6 @@ export class PostgresStorage implements IStorage {
   }
 }
 
+// Using PostgreSQL storage as primary
+// MongoDB is used in parallel for specific features (expert contacts, etc.)
 export const storage = new PostgresStorage();

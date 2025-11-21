@@ -62,18 +62,34 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 
 **Database**
-- PostgreSQL database (Neon serverless)
-- Drizzle ORM for type-safe database queries and schema management
-- WebSocket connection pooling via @neondatabase/serverless
+- **MongoDB** (Primary): Mongoose ODM with cloud-hosted database via MongoDB Atlas
+  - Configured via MONGODB_URI environment variable
+  - Seeded with admin user and expert contacts on startup
+  - Connection handled in server/mongodb.ts
+- **PostgreSQL** (Fallback): Neon serverless with Drizzle ORM
+  - Used for backward compatibility with existing storage layer
+  - Full migration to MongoDB in progress
+
+**MongoDB Collections**
+- **Users**: Admin and user credentials (admin: ayusha/ayusha)
+- **ExpertContacts**: 5 mechanical experts + 1 customer support with GPS coordinates (Lat: 12.335627, Lon: 76.619692)
+- **Products**: Common equipment catalog
+- **IndustryProducts**: Industry-specific equipment listings
+- **Items**: Legacy equipment listings
+- **Rentals**: Rental transactions
+- **HealthReports**: Equipment condition assessments
+- **Appraisals**: Market valuations
+- **Exchanges**: Equipment trade offers
+- **Notifications**: User notifications
 
 **Schema Design**
-- **Users Table**: Stores user credentials, role (user/industry), and company info
-- **Items Table**: Equipment listings with pricing, availability tracking, purchase/warranty dates
-- **Rentals Table**: Rental transactions with dates, quantities, amounts, and status
-- **Machine Parts Table**: Reference data for machine part locations and diagrams
-- **Health Reports Table**: Condition assessments with scores, inspections, and maintenance history
-- **Appraisals Table**: Market valuations with ML vision analysis, demand assessment, and pricing recommendations
-- **Exchanges Table**: Equipment exchange/trade offers between users
+- **Users Collection**: username, email, password (bcrypt), role, companyName
+- **ExpertContacts Collection**: name, role, expertise, phone, email, avatarUrl
+- **Items/Products Collection**: Equipment with pricing, availability, purchase/warranty dates
+- **Rentals Collection**: Transactions with dates, amounts, and status
+- **Health Reports Collection**: Condition scores, inspections, maintenance history
+- **Appraisals Collection**: Market valuations with ML vision analysis
+- **Exchanges Collection**: Equipment exchange proposals
 
 **Data Relationships**
 - Items belong to industry users (foreign key: industryId)
@@ -106,9 +122,21 @@ Preferred communication style: Simple, everyday language.
 - In-memory session store (development)
 - Should be replaced with connect-pg-simple or Redis for production persistence
 
+**AI Services**
+- **OpenAI GPT-5**: Primary AI service for equipment appraisals and health reports
+- **OpenRouter (Claude 3.5 Sonnet)**: Automatic fallback for low credits/quota exceeded
+- Fallback logic implemented in server/openai-service.ts
+- Handles vision analysis for equipment condition assessment
+
 **Environment Variables Required**
-- DATABASE_URL: PostgreSQL connection string
+- MONGODB_URI: MongoDB Atlas connection string
+- DATABASE_URL: PostgreSQL connection string (fallback)
 - CLOUDINARY_CLOUD_NAME: Cloudinary account identifier
 - CLOUDINARY_API_KEY: Cloudinary API authentication
 - CLOUDINARY_API_SECRET: Cloudinary API secret
+- OPENAI_API_KEY: OpenAI API key for GPT-5 access
+- OPENROUTER_API_KEY: OpenRouter API key for Claude 3.5 Sonnet fallback
+- GRASSHOPPER_API_KEY: Grasshopper API for SMS/call features
+- CONTACT_EMAIL: Customer support email
+- CONTACT_PHONE: Customer support phone
 - SESSION_SECRET: Express session encryption key (defaults to 'rental-marketplace-secret')
