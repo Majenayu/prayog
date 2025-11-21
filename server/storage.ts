@@ -65,9 +65,17 @@ export interface IStorage {
 
   // Rentals
   createRental(rental: InsertRental): Promise<Rental>;
+  getAllRentals(): Promise<Rental[]>;
+  getAllRentalsWithDetails(): Promise<any[]>;
+  getRentalById(id: string): Promise<Rental | null>;
+  getRentalByIdWithDetails(id: string): Promise<any | null>;
   getRentalsByIndustry(industryId: string): Promise<Rental[]>;
   getRentalsByUser(userId: string): Promise<Rental[]>;
   updateRental(id: string, updates: Partial<Rental>): Promise<Rental | null>;
+  
+  // Rental QR Codes
+  createOrUpdateRentalQrCode(qrCode: { rentalId: string; qrCodeData: any; qrImageUrl: string }): Promise<any>;
+  getRentalQrCodeByRentalId(rentalId: string): Promise<any | null>;
 
   // Machine Parts
   createMachinePart(part: InsertMachinePart & { positionX?: number; positionY?: number; diagramImageUrl?: string }): Promise<MachinePart>;
@@ -260,6 +268,56 @@ export class PostgresStorage implements IStorage {
     return newRental;
   }
 
+  async getAllRentals(): Promise<Rental[]> {
+    return await db.select().from(rentals).orderBy(desc(rentals.createdAt));
+  }
+
+  async getAllRentalsWithDetails(): Promise<any[]> {
+    const allRentals = await db.select().from(rentals).orderBy(desc(rentals.createdAt));
+    
+    const rentalsWithDetails = await Promise.all(
+      allRentals.map(async (rental) => {
+        const product = await this.getIndustryProductById(rental.itemId);
+        const renter = await this.getUserById(rental.userId);
+        const industry = await this.getUserById(rental.industryId);
+        
+        return {
+          ...rental,
+          itemName: product?.name || 'Unknown Item',
+          itemImageUrl: product?.imageUrl || '',
+          userName: renter?.username || 'Unknown User',
+          industryName: industry?.companyName || industry?.username || 'Unknown Industry',
+          pricePerDay: product?.pricePerDay || '0',
+        };
+      })
+    );
+    
+    return rentalsWithDetails;
+  }
+
+  async getRentalById(id: string): Promise<Rental | null> {
+    const [rental] = await db.select().from(rentals).where(eq(rentals.id, id)).limit(1);
+    return rental || null;
+  }
+
+  async getRentalByIdWithDetails(id: string): Promise<any | null> {
+    const rental = await this.getRentalById(id);
+    if (!rental) return null;
+    
+    const product = await this.getIndustryProductById(rental.itemId);
+    const renter = await this.getUserById(rental.userId);
+    const industry = await this.getUserById(rental.industryId);
+    
+    return {
+      ...rental,
+      itemName: product?.name || 'Unknown Item',
+      itemImageUrl: product?.imageUrl || '',
+      userName: renter?.username || 'Unknown User',
+      industryName: industry?.companyName || industry?.username || 'Unknown Industry',
+      pricePerDay: product?.pricePerDay || '0',
+    };
+  }
+
   async getRentalsByIndustry(industryId: string): Promise<Rental[]> {
     return await db.select().from(rentals).where(eq(rentals.industryId, industryId)).orderBy(desc(rentals.createdAt));
   }
@@ -271,6 +329,29 @@ export class PostgresStorage implements IStorage {
   async updateRental(id: string, updates: Partial<Rental>): Promise<Rental | null> {
     const [updatedRental] = await db.update(rentals).set(updates).where(eq(rentals.id, id)).returning();
     return updatedRental || null;
+  }
+  
+  // Rental QR Codes
+  async createOrUpdateRentalQrCode(qrCode: { rentalId: string; qrCodeData: any; qrImageUrl: string }): Promise<any> {
+    const { rentalQrCodes } = await import("@shared/schema");
+    const existing = await db.select().from(rentalQrCodes).where(eq(rentalQrCodes.rentalId, qrCode.rentalId)).limit(1);
+    
+    if (existing.length > 0) {
+      const [updated] = await db.update(rentalQrCodes)
+        .set({ qrCodeData: qrCode.qrCodeData, qrImageUrl: qrCode.qrImageUrl })
+        .where(eq(rentalQrCodes.rentalId, qrCode.rentalId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(rentalQrCodes).values(qrCode).returning();
+      return created;
+    }
+  }
+
+  async getRentalQrCodeByRentalId(rentalId: string): Promise<any | null> {
+    const { rentalQrCodes } = await import("@shared/schema");
+    const [qrCode] = await db.select().from(rentalQrCodes).where(eq(rentalQrCodes.rentalId, rentalId)).limit(1);
+    return qrCode || null;
   }
 
   // Machine Parts

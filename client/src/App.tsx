@@ -16,6 +16,7 @@ import MachineBuilder from "@/pages/machine-builder";
 import MachinesPage from "@/pages/machines";
 import MyRentals from "@/pages/my-rentals";
 import DemoFiles from "@/pages/demo-files";
+import AdminOrders from "@/pages/admin-orders";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component, allowedRole }: { component: any; allowedRole?: string }) {
@@ -58,7 +59,7 @@ function Router() {
     <Switch>
       <Route path="/">
         {user ? (
-          <Redirect to={user.role === 'industry' ? '/industry' : '/dashboard'} />
+          <Redirect to={user.role === 'industry' ? '/industry' : user.role === 'admin' ? '/admin' : '/dashboard'} />
         ) : (
           <AuthPage />
         )}
@@ -78,6 +79,10 @@ function Router() {
       
       <Route path="/demo-files">
         <ProtectedRoute component={DemoFiles} />
+      </Route>
+      
+      <Route path="/admin">
+        <ProtectedRoute component={AdminOrders} allowedRole="admin" />
       </Route>
       
       <Route path="/contacts">

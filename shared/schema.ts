@@ -278,12 +278,35 @@ export const trackingSessions = pgTable("tracking_sessions", {
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: text("user_id").notNull(), // User who receives the notification
-  type: text("type").notNull(), // 'order_received', 'payment_reminder', 'return_reminder', 'rental_approved', 'rental_completed', 'exchange_offer', 'system'
+  type: text("type").notNull(), // 'order_received', 'payment_reminder', 'return_reminder', 'rental_approved', 'rental_completed', 'exchange_offer', 'system', 'cart_added', 'delivery_deadline_24h', 'delivery_taken'
   title: text("title").notNull(),
   message: text("message").notNull(),
   isRead: boolean("is_read").notNull().default(false),
   relatedId: text("related_id"), // ID of related entity (rental, order, etc.)
   relatedType: text("related_type"), // 'rental', 'order', 'exchange', etc.
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const rentalQrCodes = pgTable("rental_qr_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rentalId: text("rental_id").notNull().unique(),
+  qrCodeData: json("qr_code_data").$type<{
+    rentalId: string;
+    userId: string;
+    userName: string;
+    industryId: string;
+    industryName: string;
+    itemId: string;
+    itemName: string;
+    itemImageUrl: string;
+    startDate: string;
+    endDate: string;
+    days: number;
+    pricePerDay: string;
+    totalAmount: string;
+    healthReport?: any;
+  }>().notNull(),
+  qrImageUrl: text("qr_image_url"), // URL to generated QR code image
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -295,7 +318,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(['user', 'industry']),
+  role: z.enum(['user', 'industry', 'admin']),
   companyName: z.string().optional(),
 });
 
@@ -562,3 +585,5 @@ export type TrackingSessionWithDetails = TrackingSession & {
   userName?: string;
   industryName?: string;
 };
+
+export type RentalQrCode = typeof rentalQrCodes.$inferSelect;

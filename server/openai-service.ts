@@ -331,6 +331,7 @@ Provide your analysis in this exact JSON structure:
       try {
         const fallbackResponse = await openrouter.chat.completions.create({
           model: "anthropic/claude-3.5-sonnet",
+          max_tokens: 2000,
           messages: [
             {
               role: "system",
@@ -412,14 +413,14 @@ Provide your analysis in this exact JSON structure:
                   type: "image_url",
                   image_url: {
                     url: `data:image/jpeg;base64,${equipmentImage}`,
-                    detail: "high"
+                    detail: "low"
                   }
                 },
                 {
                   type: "image_url",
                   image_url: {
                     url: `data:image/jpeg;base64,${billImage}`,
-                    detail: "high"
+                    detail: "low"
                   }
                 }
               ],

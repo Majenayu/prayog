@@ -12,6 +12,7 @@ import { db } from "./db";
 import { insertUserSchema, insertItemSchema, insertProductSchema, insertIndustryProductSchema, insertMachinePartSchema, insertHealthReportSchema, insertAppraisalSchema, insertExchangeSchema, insertItemPartSchema, insertPartRentalSchema, insertMachineSchema, insertMachineComponentSchema, cartItems, rentals, trackingSessions, type InsertMachinePart } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { analyzeItemImage, generateHealthReport, analyzeEquipmentForExchange } from "./openai-service";
+import QRCode from "qrcode";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -1608,7 +1609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Start and end coordinates are required" });
       }
 
-      const apiKey = process.env.GRAPHHOPPER_API_KEY;
+      const apiKey = process.env.GRASSHOPPER_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ message: "GraphHopper API key not configured" });
       }
@@ -1620,6 +1621,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(data);
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Failed to calculate route" });
+    }
+  });
+
+  // Admin Routes
+  app.get("/api/admin/all-orders", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const rentalsWithDetails = await storage.getAllRentalsWithDetails();
+      res.json(rentalsWithDetails);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch all orders" });
+    }
+  });
+
+  app.post("/api/admin/generate-qr/:rentalId", async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUserById(req.session.userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { rentalId } = req.params;
+      const rentalWithDetails = await storage.getRentalByIdWithDetails(rentalId);
+      if (!rentalWithDetails) {
+        return res.status(404).json({ message: "Rental not found" });
+      }
+
+      const qrData = {
+        rentalId: rentalWithDetails.id,
+        userId: rentalWithDetails.userId,
+        userName: rentalWithDetails.userName,
+        industryId: rentalWithDetails.industryId,
+        industryName: rentalWithDetails.industryName,
+        itemId: rentalWithDetails.itemId,
+        itemName: rentalWithDetails.itemName,
+        itemImageUrl: rentalWithDetails.itemImageUrl,
+        startDate: rentalWithDetails.startDate.toISOString(),
+        endDate: rentalWithDetails.endDate ? rentalWithDetails.endDate.toISOString() : '',
+        days: rentalWithDetails.days,
+        pricePerDay: rentalWithDetails.pricePerDay,
+        totalAmount: rentalWithDetails.totalAmount,
+        status: rentalWithDetails.status,
+      };
+
+      const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(qrData), {
+        errorCorrectionLevel: 'H',
+        type: 'image/png',
+        width: 512,
+        margin: 2,
+      });
+
+      await storage.createOrUpdateRentalQrCode({
+        rentalId: rentalWithDetails.id,
+        qrCodeData: qrData,
+        qrImageUrl: qrCodeDataUrl,
+      });
+
+      res.json({ qrCodeUrl: qrCodeDataUrl, qrData });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to generate QR code" });
+    }
+  });
+
+  app.get("/api/qr/:rentalId", async (req, res) => {
+    try {
+      const { rentalId } = req.params;
+      const qrCode = await storage.getRentalQrCodeByRentalId(rentalId);
+      
+      if (!qrCode) {
+        return res.status(404).json({ message: "QR code not found" });
+      }
+
+      res.json(qrCode.qrCodeData);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to fetch QR data" });
     }
   });
 
