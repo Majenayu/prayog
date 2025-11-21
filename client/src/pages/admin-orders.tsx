@@ -52,12 +52,12 @@ export default function AdminOrders() {
       }
       return await response.json();
     },
-    onSuccess: (data: { qrCodeUrl: string; qrData: any }) => {
+    onSuccess: (data: { qrCodeUrl: string; qrData: any; isExisting?: boolean; message?: string }) => {
       setQrCodeUrl(data.qrCodeUrl);
       setQrDialogOpen(true);
       toast({
-        title: "QR Code Generated",
-        description: "QR code has been generated successfully",
+        title: data.isExisting ? "QR Code Retrieved" : "QR Code Generated",
+        description: data.message || "QR code is ready",
       });
     },
     onError: (error: any) => {

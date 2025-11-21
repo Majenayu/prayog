@@ -69,6 +69,8 @@ export interface IStorage {
   getAllRentalsWithDetails(): Promise<any[]>;
   getRentalById(id: string): Promise<Rental | null>;
   getRentalByIdWithDetails(id: string): Promise<any | null>;
+  
+  // QR Codes - Immutable once created
   getRentalsByIndustry(industryId: string): Promise<Rental[]>;
   getRentalsByUser(userId: string): Promise<Rental[]>;
   updateRental(id: string, updates: Partial<Rental>): Promise<Rental | null>;
@@ -331,20 +333,35 @@ export class PostgresStorage implements IStorage {
     return updatedRental || null;
   }
   
-  // Rental QR Codes
+  // Rental QR Codes - IMMUTABLE: Once created, cannot be modified
   async createOrUpdateRentalQrCode(qrCode: { rentalId: string; qrCodeData: any; qrImageUrl: string }): Promise<any> {
     const { rentalQrCodes } = await import("@shared/schema");
+    
+    // Double-check for existing QR code before attempting insert
     const existing = await db.select().from(rentalQrCodes).where(eq(rentalQrCodes.rentalId, qrCode.rentalId)).limit(1);
     
+    // IMMUTABILITY ENFORCEMENT: If QR code already exists, return it without modification
+    // This ensures QR code data cannot be tampered with after generation
     if (existing.length > 0) {
-      const [updated] = await db.update(rentalQrCodes)
-        .set({ qrCodeData: qrCode.qrCodeData, qrImageUrl: qrCode.qrImageUrl })
-        .where(eq(rentalQrCodes.rentalId, qrCode.rentalId))
-        .returning();
-      return updated;
-    } else {
+      return existing[0];
+    }
+    
+    try {
+      // Attempt to insert new QR code
       const [created] = await db.insert(rentalQrCodes).values(qrCode).returning();
       return created;
+    } catch (error: any) {
+      // Handle unique constraint violation from concurrent requests
+      // If another request inserted while we were processing, fetch and return that record
+      if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+        console.log(`Concurrent insert detected for rental ${qrCode.rentalId}, fetching existing QR code`);
+        const [existingAfterRace] = await db.select().from(rentalQrCodes).where(eq(rentalQrCodes.rentalId, qrCode.rentalId)).limit(1);
+        if (existingAfterRace) {
+          return existingAfterRace;
+        }
+      }
+      // Re-throw if it's not a unique constraint error
+      throw error;
     }
   }
 

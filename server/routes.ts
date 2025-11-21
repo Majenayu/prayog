@@ -1691,6 +1691,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { rentalId } = req.params;
+      
+      // IMMUTABILITY CHECK: Return existing QR code if already generated
+      const existingQr = await storage.getRentalQrCodeByRentalId(rentalId);
+      if (existingQr) {
+        return res.json({ 
+          qrCodeUrl: existingQr.qrImageUrl, 
+          qrData: existingQr.qrCodeData,
+          isExisting: true,
+          message: "QR code already exists (immutable data)"
+        });
+      }
+
       const rentalWithDetails = await storage.getRentalByIdWithDetails(rentalId);
       if (!rentalWithDetails) {
         return res.status(404).json({ message: "Rental not found" });
@@ -1730,13 +1742,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         margin: 2,
       });
 
-      await storage.createOrUpdateRentalQrCode({
+      // Create immutable QR code record (cannot be modified once created)
+      const savedQr = await storage.createOrUpdateRentalQrCode({
         rentalId: rentalWithDetails.id,
         qrCodeData: qrData,
         qrImageUrl: qrCodeDataUrl,
       });
 
-      res.json({ qrCodeUrl: qrCodeDataUrl, qrData });
+      res.json({ 
+        qrCodeUrl: qrCodeDataUrl, 
+        qrData,
+        isExisting: false,
+        message: "QR code generated successfully (data is now immutable)"
+      });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Failed to generate QR code" });
     }
