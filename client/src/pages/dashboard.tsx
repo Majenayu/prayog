@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeftRight, Phone, CheckCircle2, AlertCircle, TrendingUp, Calendar, Zap } from "lucide-react";
+import { Search, ShoppingCart, LogOut, Package, Activity, IndianRupee, ArrowLeftRight, Phone, CheckCircle2, AlertCircle, TrendingUp, Calendar, Zap, FileImage } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
@@ -444,6 +444,15 @@ export default function Dashboard() {
               >
                 <ArrowLeftRight className="h-4 w-4" />
                 <span className="hidden sm:inline">Exchanges</span>
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setLocation("/demo-files")}
+                className="gap-2"
+                data-testid="button-demo-files"
+              >
+                <FileImage className="h-4 w-4" />
+                <span className="hidden sm:inline">Demo Files</span>
               </Button>
               <NotificationBell />
               <ThemeToggle />
