@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { connectMongoDB } from "./mongodb";
+import { seedMongoData } from "./mongo-seed";
 
 const app = express();
 
@@ -47,6 +49,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Connect to MongoDB and seed initial data
+  try {
+    await connectMongoDB();
+    await seedMongoData();
+  } catch (error) {
+    console.error("MongoDB initialization error:", error);
+    console.log("Continuing without MongoDB - some features may be unavailable");
+  }
+
   const server = await registerRoutes(app);
 
   app.use("/attached_assets", express.static("attached_assets"));
