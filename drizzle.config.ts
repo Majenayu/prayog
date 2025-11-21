@@ -1,7 +1,9 @@
 import { defineConfig } from "drizzle-kit";
 
+// Drizzle is only used for PostgreSQL fallback
+// When using MongoDB (MONGODB_URI is set), this config is not needed
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
+  console.warn("DATABASE_URL not set - Drizzle config not available. Using MongoDB storage.");
 }
 
 export default defineConfig({
@@ -9,6 +11,6 @@ export default defineConfig({
   schema: "./shared/schema.ts",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_URL || "postgresql://placeholder",
   },
 });

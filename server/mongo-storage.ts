@@ -510,6 +510,11 @@ export class MongoStorage implements IStorage {
     throw new Error('Machine Components functionality not implemented');
   }
 
+  async addMachineComponent(component: InsertMachineComponent): Promise<MachineComponent> {
+    console.warn('addMachineComponent not implemented in MongoStorage');
+    throw new Error('Machine Components functionality not implemented');
+  }
+
   async getMachineComponents(machineId: string): Promise<MachineComponent[]> {
     console.warn('getMachineComponents not implemented in MongoStorage');
     return [];
