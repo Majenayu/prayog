@@ -38,7 +38,8 @@ export function TrackingMap({ sessionId, isIndustry = false, onLocationUpdate }:
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = L.map(mapContainerRef.current).setView([20.5937, 78.9629], 5);
+    // Default location: Mysuru, Karnataka, India (12.335627°N, 76.619692°E)
+    const map = L.map(mapContainerRef.current).setView([12.335627, 76.619692], 13);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: "&copy; OpenStreetMap contributors",
       maxZoom: 19,

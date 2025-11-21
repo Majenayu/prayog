@@ -13,12 +13,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/lib/auth-context";
-import { User, Building2, Sparkles, TrendingUp } from "lucide-react";
+import { User, Building2, Sparkles, TrendingUp, Shield } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(['user', 'industry']),
+  role: z.enum(['user', 'industry', 'admin']),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
@@ -29,7 +29,7 @@ export default function AuthPage() {
   const { toast } = useToast();
   const { login } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const [selectedRole, setSelectedRole] = useState<'user' | 'industry'>('user');
+  const [selectedRole, setSelectedRole] = useState<'user' | 'industry' | 'admin'>('user');
 
   const loginForm = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -52,7 +52,8 @@ export default function AuthPage() {
   });
 
   const loginMutation = useMutation({
-    mutationFn: async (data: LoginForm) => {
+    mutationFn: async (data: { username: string; password: string }) => {
+      // Backend only needs username and password - it returns the actual role from database
       const response = await apiRequest("POST", "/api/auth/login", data);
       return response.json();
     },
@@ -64,6 +65,8 @@ export default function AuthPage() {
       });
       if (data.user.role === "industry") {
         setLocation("/industry");
+      } else if (data.user.role === "admin") {
+        setLocation("/admin");
       } else {
         setLocation("/dashboard");
       }
@@ -104,10 +107,22 @@ export default function AuthPage() {
   });
 
   const onLogin = (data: LoginForm) => {
-    loginMutation.mutate({ ...data, role: selectedRole });
+    // Backend derives role from database, not from client input
+    // Only send username and password for authentication
+    const { username, password } = data;
+    loginMutation.mutate({ username, password });
   };
 
   const onRegister = (data: RegisterForm) => {
+    // Admin registration is disabled - only allow user or industry
+    if (selectedRole === 'admin') {
+      toast({
+        title: "Registration not allowed",
+        description: "Admin accounts cannot be registered. Please use the admin seed endpoint.",
+        variant: "destructive",
+      });
+      return;
+    }
     registerMutation.mutate({ ...data, role: selectedRole });
   };
 
@@ -181,7 +196,7 @@ export default function AuthPage() {
 
           <Card className="border-2">
             <CardHeader className="space-y-4">
-              <div className="flex justify-center gap-4 mb-4">
+              <div className="flex justify-center gap-2 mb-4 flex-wrap">
                 <Button
                   variant={selectedRole === 'user' ? 'default' : 'outline'}
                   onClick={() => {
@@ -208,6 +223,20 @@ export default function AuthPage() {
                   <Building2 className="mr-2 h-4 w-4" />
                   Industry
                 </Button>
+                <Button
+                  variant={selectedRole === 'admin' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setSelectedRole('admin');
+                    loginForm.setValue('role', 'admin');
+                    // Don't set registerForm to 'admin' - it's not a valid role in insertUserSchema
+                    // Admin registration is disabled anyway
+                  }}
+                  className="flex-1"
+                  data-testid="button-role-admin"
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  Admin
+                </Button>
               </div>
 
               <div>
@@ -217,7 +246,9 @@ export default function AuthPage() {
                 <CardDescription>
                   {isLogin 
                     ? `Sign in to your ${selectedRole} account` 
-                    : `Sign up as ${selectedRole === 'industry' ? 'an' : 'a'} ${selectedRole}`}
+                    : selectedRole === 'admin' 
+                      ? 'Admin registration is disabled' 
+                      : `Sign up as ${selectedRole === 'industry' ? 'an' : 'a'} ${selectedRole}`}
                 </CardDescription>
               </div>
             </CardHeader>
@@ -294,8 +325,15 @@ export default function AuthPage() {
                 </TabsContent>
 
                 <TabsContent value="register">
-                  <Form {...registerForm}>
-                    <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+                  {selectedRole === 'admin' ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Shield className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Admin accounts cannot be created through registration.</p>
+                      <p className="text-sm mt-2">Please use the admin seed endpoint to create an admin account.</p>
+                    </div>
+                  ) : (
+                    <Form {...registerForm}>
+                      <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
                       <FormField
                         control={registerForm.control}
                         name="username"
@@ -382,6 +420,7 @@ export default function AuthPage() {
                       </Button>
                     </form>
                   </Form>
+                  )}
                 </TabsContent>
               </Tabs>
             </CardContent>
