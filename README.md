@@ -57,3 +57,18 @@ This is an actively evolving project. Production hardening, observability, rate 
 ## License
 
 See the repository license file and package metadata for the authoritative terms.
+## Implementation notes
+
+The primary app is a Vite/React client with an Express/TypeScript server. `server/routes.ts` implements authentication, role-gated industry/user workflows, rentals, machine parts, exchanges, appraisals, health reports, cart/checkout, tracking, notifications, admin seed/QR operations, and AI-assisted analysis. `shared/schema.ts` and `shared/constants.ts` define shared contracts; storage adapters support MongoDB and Drizzle/Postgres paths.
+
+### API and operations
+
+Representative routes include `/api/login` or `/api/auth/*`, `/api/items`, `/api/rentals`, `/api/machine-parts`, `/api/exchanges`, `/api/cart`, `/api/tracking`, `/api/ai/appraisal`, and `/api/ai/health-report`. Run `npm run check`, `npm run build`, and `npm run db:push` only after reviewing schema changes. Configure database, session, Cloudinary, OpenAI/OpenRouter, and mapping credentials through the deployment secret store.
+
+### Security and limitations
+
+Require strong session secrets, role/ownership checks, upload validation, rate limits on AI and tracking endpoints, HTTPS, and durable production session storage. The repository also contains experimental `renthub-simple` and `simple-renthub` variants; do not assume they share the primary app's schema or security guarantees.
+
+### License status
+
+`package.json` declares MIT; retain that notice when redistributing the project and verify third-party asset/model terms separately.
